@@ -1,0 +1,22 @@
+# Supabase Configuration
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_KEY=your-service-key-here
+SUPABASE_ANON_KEY=your-anon-key-here
+
+# JWT Secret (從 Supabase Dashboard 獲取)
+SUPABASE_JWT_SECRET=gpOhsTetmP5/UvTJCY4fNTSPvECvkbqfo83LCIYHYHRyxCEaXgDoWVSeDJOOUhhyFlUoTi8Ta9zXY0Gv8jFdkQ==
+
+# OpenAI Configuration
+OPENAI_API_KEY=sk-your-openai-api-key-here
+
+# API Configuration
+API_HOST=0.0.0.0
+API_PORT=8000
+SECRET_KEY=your-secret-key-for-jwt-signing
+
+# Scraper Configuration
+SCRAPER_TIMEOUT=40
+MAX_RETRIES=3
+
+# Optional: For development/debugging
+DEBUG=true 

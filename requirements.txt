@@ -1,0 +1,43 @@
+# Web Framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+
+# Database & Authentication
+supabase==2.1.0
+psycopg2-binary==2.9.9
+
+# Web Scraping
+requests==2.31.0
+beautifulsoup4==4.12.2
+selenium==4.15.0
+webdriver-manager==4.0.1
+
+# AI & Machine Learning
+openai==1.3.3
+
+# Data Validation & Type Hints
+pydantic==2.5.0
+
+# Environment Variables
+python-dotenv==1.0.0
+
+# JWT Authentication
+PyJWT[crypto]==2.8.0
+cryptography==41.0.7
+
+# HTTP Client
+httpx==0.25.2
+
+# CORS
+python-multipart==0.0.6
+
+# Date and Time utilities
+python-dateutil==2.8.2
+
+# Development & Testing (optional)
+pytest==7.4.3
+pytest-asyncio==0.21.1
+
+# Linting & Formatting (optional)
+black==23.11.0
+flake8==6.1.0 

@@ -1,0 +1,73 @@
+# Render 部署配置文件
+# FinNews-Bot 2.0 - 智能財經新聞推送系統
+
+services:
+  # 🚀 FastAPI 後端服務
+  - type: web
+    name: finnews-bot-api
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT --workers 2
+    plan: starter  # 或 standard
+    region: singapore  # 選擇最近的區域
+    branch: main
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.9.18
+      - key: SUPABASE_URL
+        sync: false  # 需要在 Render Dashboard 中手動設置
+      - key: SUPABASE_SERVICE_KEY
+        sync: false  # 需要在 Render Dashboard 中手動設置
+      - key: SUPABASE_JWT_SECRET
+        sync: false  # 需要在 Render Dashboard 中手動設置
+      - key: OPENAI_API_KEY
+        sync: false  # 需要在 Render Dashboard 中手動設置
+      - key: YAHOO_FINANCE_URL
+        value: https://finance.yahoo.com/topic/stock-market-news
+      - key: SCRAPER_TIMEOUT
+        value: 30
+      - key: API_HOST
+        value: 0.0.0.0
+      - key: API_PORT
+        value: $PORT
+    autoDeploy: true
+
+  # ⚙️ 智能推送排程服務
+  - type: cron
+    name: finnews-bot-scheduler
+    env: python
+    schedule: "*/10 * * * *"  # 每 10 分鐘檢查一次推送條件
+    buildCommand: pip install -r requirements.txt
+    startCommand: python run_scraper.py
+    region: singapore
+    branch: main
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.9.18
+      - key: SUPABASE_URL
+        sync: false  # 與 API 服務共用環境變數
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: YAHOO_FINANCE_URL
+        value: https://finance.yahoo.com/topic/stock-market-news
+      - key: SCRAPER_TIMEOUT
+        value: 30
+    autoDeploy: true
+
+# 📝 部署說明:
+# 1. 將此文件放在專案根目錄
+# 2. 在 Render Dashboard 中連接 GitHub 專案
+# 3. 手動設置機密環境變數 (SUPABASE_*, OPENAI_API_KEY)
+# 4. 系統將自動部署兩個服務:
+#    - API 服務: 提供 RESTful API
+#    - 排程服務: 智能推送控制
+# 
+# 🕐 推送邏輯:
+# - 系統每 10 分鐘檢查一次是否有符合推送條件的訂閱
+# - 只在 08:00, 13:00, 20:00 (±30分鐘) 時間窗口內推送
+# - 自動防重複推送，同一時間窗口只推送一次 
