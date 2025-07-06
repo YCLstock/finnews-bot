@@ -36,11 +36,15 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",  # Next.js 開發環境
-        "https://*.vercel.app",   # Vercel 部署環境
-        "https://your-frontend-domain.com"  # 實際部署域名
+        "http://localhost:3001",  # 額外的開發環境
+        "https://finnews-bot-frontend.vercel.app",  # 主要 Vercel 域名
+        "https://finnews-bot-frontend-git-feature-06c8a8-lins-projects-06103545.vercel.app",  # 您的分支域名
+        "https://finnews-bot-frontend-git-main-lins-projects-06103545.vercel.app",  # main 分支域名
+        "https://lins-projects-06103545.vercel.app",  # 可能的項目域名
+        # 添加更多可能的 Vercel 域名模式
     ],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["*"],
 )
 
