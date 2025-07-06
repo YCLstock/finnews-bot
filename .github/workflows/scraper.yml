@@ -15,7 +15,7 @@ jobs:
       uses: actions/checkout@v4
     
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.9'
     
@@ -51,9 +51,9 @@ jobs:
         python run_scraper.py
     
     - name: Upload debug screenshots (if any)
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: debug-screenshots
+        name: debug-screenshots-${{ github.run_number }}
         path: debug_pages/
         retention-days: 7 
