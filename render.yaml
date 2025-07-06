@@ -33,41 +33,13 @@ services:
         value: $PORT
     autoDeploy: true
 
-  # ⚙️ 智能推送排程服務
-  - type: cron
-    name: finnews-bot-scheduler
-    env: python
-    schedule: "*/10 * * * *"  # 每 10 分鐘檢查一次推送條件
-    buildCommand: pip install -r requirements.txt
-    startCommand: python run_scraper.py
-    region: singapore
-    branch: main
-    envVars:
-      - key: PYTHON_VERSION
-        value: 3.9.18
-      - key: SUPABASE_URL
-        sync: false  # 與 API 服務共用環境變數
-      - key: SUPABASE_SERVICE_KEY
-        sync: false
-      - key: SUPABASE_JWT_SECRET
-        sync: false
-      - key: OPENAI_API_KEY
-        sync: false
-      - key: YAHOO_FINANCE_URL
-        value: https://finance.yahoo.com/topic/stock-market-news
-      - key: SCRAPER_TIMEOUT
-        value: 30
-    autoDeploy: true
-
 # 📝 部署說明:
 # 1. 將此文件放在專案根目錄
 # 2. 在 Render Dashboard 中連接 GitHub 專案
 # 3. 手動設置機密環境變數 (SUPABASE_*, OPENAI_API_KEY)
-# 4. 系統將自動部署兩個服務:
-#    - API 服務: 提供 RESTful API
-#    - 排程服務: 智能推送控制
+# 4. 定期爬蟲任務由 GitHub Actions 處理
 # 
 # 🕐 推送邏輯:
-# - 系統每 10 分鐘檢查一次是否有符合推送條件的訂閱
+# - GitHub Actions 每 10 分鐘檢查一次是否有符合推送條件的訂閱
 # - 只在 08:00, 13:00, 20:00 (±30分鐘) 時間窗口內推送
 # - 自動防重複推送，同一時間窗口只推送一次 
