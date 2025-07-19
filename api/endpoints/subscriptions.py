@@ -15,7 +15,7 @@ class SubscriptionCreate(BaseModel):
     delivery_target: str  # Discord Webhook URL
     keywords: List[str] = []
     news_sources: List[str] = ["yahoo_finance"]  # 預設新聞源
-    summary_language: str = "zh-TW"  # 預設繁體中文
+    summary_language: str = "zh_tw"  # 預設繁體中文
     push_frequency_type: str = "daily"  # 新的推送頻率類型
     
     @validator('delivery_target')
@@ -34,6 +34,13 @@ class SubscriptionCreate(BaseModel):
     def validate_frequency_type(cls, v):
         if v not in ['daily', 'twice', 'thrice']:
             raise ValueError('push_frequency_type must be one of: daily, twice, thrice')
+        return v
+    
+    @validator('summary_language')
+    def validate_summary_language(cls, v):
+        valid_languages = ['zh_tw', 'zh_cn', 'en_us', 'en', 'zh']
+        if v not in valid_languages:
+            raise ValueError(f'summary_language must be one of: {", ".join(valid_languages)}')
         return v
 
 class SubscriptionUpdate(BaseModel):
@@ -61,6 +68,14 @@ class SubscriptionUpdate(BaseModel):
     def validate_frequency_type(cls, v):
         if v is not None and v not in ['daily', 'twice', 'thrice']:
             raise ValueError('push_frequency_type must be one of: daily, twice, thrice')
+        return v
+    
+    @validator('summary_language')
+    def validate_summary_language(cls, v):
+        if v is not None:
+            valid_languages = ['zh_tw', 'zh_cn', 'en_us', 'en', 'zh']
+            if v not in valid_languages:
+                raise ValueError(f'summary_language must be one of: {", ".join(valid_languages)}')
         return v
 
 class SubscriptionResponse(BaseModel):
@@ -113,26 +128,52 @@ async def create_or_update_subscription(
     """
     創建或更新用戶的訂閱（使用 UPSERT）
     """
-    # 準備資料庫資料
-    db_data = {
-        "user_id": current_user_id,
-        "delivery_platform": subscription_data.delivery_platform,
-        "delivery_target": subscription_data.delivery_target,
-        "keywords": subscription_data.keywords,
-        "news_sources": subscription_data.news_sources,
-        "summary_language": subscription_data.summary_language,
-        "push_frequency_type": subscription_data.push_frequency_type,
-        "is_active": True
-    }
-    
-    result = db_manager.create_subscription(db_data)
-    if not result:
+    try:
+        print(f"📝 正在創建/更新用戶 {current_user_id} 的訂閱")
+        print(f"📝 語言設定: {subscription_data.summary_language}")
+        
+        # 準備資料庫資料
+        db_data = {
+            "user_id": current_user_id,
+            "delivery_platform": subscription_data.delivery_platform,
+            "delivery_target": subscription_data.delivery_target,
+            "keywords": subscription_data.keywords,
+            "news_sources": subscription_data.news_sources,
+            "summary_language": subscription_data.summary_language,
+            "push_frequency_type": subscription_data.push_frequency_type,
+            "is_active": True
+        }
+        
+        result = db_manager.create_subscription(db_data)
+        if not result:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to create subscription"
+            )
+        
+        print(f"✅ 成功創建/更新用戶 {current_user_id} 的訂閱")
+        return result
+        
+    except HTTPException:
+        # 重新拋出 HTTP 異常
+        raise
+    except Exception as e:
+        print(f"❌ 創建訂閱時發生錯誤: {str(e)}")
+        print(f"❌ 錯誤類型: {type(e).__name__}")
+        import traceback
+        print(f"❌ 詳細錯誤: {traceback.format_exc()}")
+        
+        # 檢查是否為資料庫 enum 錯誤
+        if "invalid input value for enum" in str(e):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid enum value: {str(e)}"
+            )
+        
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to create subscription"
+            detail=f"Failed to create subscription: {str(e)}"
         )
-    
-    return result
 
 @router.put("/", response_model=SubscriptionResponse)
 async def update_subscription(
