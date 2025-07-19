@@ -17,12 +17,14 @@ sys.path.insert(0, str(project_root))
 from scraper.scraper import scraper_manager
 from core.config import settings
 from core.database import db_manager
+from core.utils import get_current_taiwan_time, format_taiwan_datetime
 
 def main():
     """主執行函數 - 智能推送版本"""
     print("=" * 60)
     print("🚀 FinNews-Bot 智能推送排程開始執行")
-    print(f"🕐 執行時間: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    taiwan_time = get_current_taiwan_time()
+    print(f"🕐 執行時間: {format_taiwan_datetime(taiwan_time)}")
     print("=" * 60)
     
     try:
@@ -32,8 +34,9 @@ def main():
         
         # 檢查當前時間和符合條件的訂閱
         print("\n🔍 分析當前推送條件...")
-        current_time = datetime.now().strftime("%H:%M")
-        print(f"當前時間: {current_time}")
+        taiwan_time = get_current_taiwan_time()
+        current_time = taiwan_time.strftime("%H:%M")
+        print(f"當前時間 (台灣): {current_time}")
         
         # 顯示推送時間配置
         print("\n📋 推送時間配置:")
@@ -82,7 +85,8 @@ def main():
         # 在失敗時也顯示一些有用的調試信息
         try:
             print(f"\n🔧 調試信息:")
-            print(f"  - 當前時間: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            taiwan_time = get_current_taiwan_time()
+            print(f"  - 當前時間: {format_taiwan_datetime(taiwan_time)}")
             active_subs = db_manager.get_active_subscriptions()
             print(f"  - 活躍訂閱總數: {len(active_subs)}")
             
@@ -100,7 +104,8 @@ def main():
     finally:
         print("\n" + "=" * 60)
         print("🏁 FinNews-Bot 智能推送排程結束")
-        print(f"⏰ 結束時間: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        taiwan_time = get_current_taiwan_time()
+        print(f"⏰ 結束時間: {format_taiwan_datetime(taiwan_time)}")
         print("=" * 60)
 
 def check_push_schedule():
@@ -109,8 +114,9 @@ def check_push_schedule():
     print("-" * 40)
     
     try:
-        current_time = datetime.now().strftime("%H:%M")
-        print(f"當前時間: {current_time}")
+        taiwan_time = get_current_taiwan_time()
+        current_time = taiwan_time.strftime("%H:%M")
+        print(f"當前時間 (台灣): {current_time}")
         
         all_subs = db_manager.get_active_subscriptions()
         print(f"活躍訂閱總數: {len(all_subs)}")

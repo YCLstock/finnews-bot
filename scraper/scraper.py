@@ -17,7 +17,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 
 from core.config import settings
 from core.database import db_manager
-from core.utils import generate_summary_optimized, send_batch_to_discord, create_push_summary_message
+from core.utils import generate_summary_optimized, send_batch_to_discord, create_push_summary_message, parse_article_publish_time
 
 class NewsScraperManager:
     """News scraper manager for FinNews-Bot"""
@@ -301,12 +301,16 @@ class NewsScraperManager:
             if "[摘要生成失敗" in summary:
                 return None
 
+            # 解析文章發布時間
+            published_at = parse_article_publish_time()
+            
             # 構建文章數據
             article_data = {
                 'original_url': news_item['link'], 
                 'source': 'yahoo_finance', 
                 'title': news_item['title'], 
-                'summary': summary
+                'summary': summary,
+                'published_at': published_at.isoformat()  # 轉換為 ISO 格式字符串
             }
             
             return article_data

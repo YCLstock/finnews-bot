@@ -3,6 +3,7 @@ from datetime import datetime, timezone, timedelta
 import uuid
 from supabase import create_client, Client
 from core.config import settings
+from core.utils import get_current_taiwan_time, get_current_utc_time, utc_to_taiwan_time
 
 class DatabaseManager:
     """Database operations manager for FinNews-Bot"""
@@ -264,9 +265,12 @@ class DatabaseManager:
             return False
     
     def should_push_now(self, subscription: Dict[str, Any]) -> bool:
-        """檢查現在是否應該推送"""
+        """檢查現在是否應該推送（使用台灣時間）"""
         frequency_type = subscription.get('push_frequency_type', 'daily')
-        current_time = datetime.now().strftime("%H:%M")
+        
+        # 使用台灣時間進行推送邏輯檢查
+        taiwan_time = get_current_taiwan_time()
+        current_time = taiwan_time.strftime("%H:%M")
         current_window = self.get_current_time_window(current_time, frequency_type)
         
         if not current_window:
@@ -274,14 +278,14 @@ class DatabaseManager:
         
         # 檢查是否已經在這個時間窗口推送過
         last_push_window = subscription.get('last_push_window')
-        today = datetime.now().strftime("%Y-%m-%d")
+        today = taiwan_time.strftime("%Y-%m-%d")
         current_window_key = f"{today}-{current_window}"
         
         if last_push_window == current_window_key:
             print(f"⏳ 用戶 {subscription['user_id']} 在時間窗口 {current_window} 已推送過")
             return False
         
-        print(f"✅ 用戶 {subscription['user_id']} 可在時間窗口 {current_window} 推送")
+        print(f"✅ 用戶 {subscription['user_id']} 可在時間窗口 {current_window} 推送 (台灣時間: {taiwan_time.strftime('%H:%M')})")
         return True
     
     def get_current_time_window(self, current_time: str, frequency_type: str) -> Optional[str]:
@@ -301,20 +305,26 @@ class DatabaseManager:
         return schedule['max_articles']
     
     def mark_push_window_completed(self, user_id: str, frequency_type: str) -> bool:
-        """標記推送窗口為已完成（使用 user_id 作為主鍵）"""
+        """標記推送窗口為已完成（使用 user_id 作為主鍵，基於台灣時間）"""
         try:
-            current_time = datetime.now().strftime("%H:%M")
+            # 使用台灣時間確保一致性
+            taiwan_time = get_current_taiwan_time()
+            current_time = taiwan_time.strftime("%H:%M")
             current_window = self.get_current_time_window(current_time, frequency_type)
             
             if current_window:
-                today = datetime.now().strftime("%Y-%m-%d")
+                today = taiwan_time.strftime("%Y-%m-%d")
                 window_key = f"{today}-{current_window}"
                 
+                # 同時更新 last_pushed_at 為 UTC 時間
+                utc_now = get_current_utc_time()
+                
                 result = self.supabase.table("subscriptions").update({
-                    "last_push_window": window_key
+                    "last_push_window": window_key,
+                    "last_pushed_at": utc_now.isoformat()
                 }).eq("user_id", user_id).execute()
                 
-                print(f"✅ 標記推送窗口完成: {window_key}")
+                print(f"✅ 標記推送窗口完成: {window_key} (台灣時間: {taiwan_time.strftime('%Y-%m-%d %H:%M:%S')})")
                 return True
         except Exception as e:
             print(f"❌ 標記推送窗口錯誤: {e}")

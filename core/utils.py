@@ -1,8 +1,12 @@
 import time
 import requests
 from typing import List, Dict, Any, Tuple
+from datetime import datetime, timezone, timedelta
 import openai
 from core.config import settings
+
+# 台灣時區常數
+TAIWAN_TIMEZONE = timezone(timedelta(hours=8))
 
 # Initialize OpenAI
 openai.api_key = settings.OPENAI_API_KEY
@@ -289,4 +293,47 @@ def validate_keywords(keywords: List[str]) -> bool:
     if len(keywords) == 0:
         return True
     # 檢查每個關鍵字都是非空字符串
-    return all(isinstance(keyword, str) and len(keyword.strip()) > 0 for keyword in keywords) 
+    return all(isinstance(keyword, str) and len(keyword.strip()) > 0 for keyword in keywords)
+
+def get_current_utc_time() -> datetime:
+    """獲取當前 UTC 時間"""
+    return datetime.now(timezone.utc)
+
+def get_current_taiwan_time() -> datetime:
+    """獲取當前台灣時間 (UTC+8)"""
+    return datetime.now(TAIWAN_TIMEZONE)
+
+def utc_to_taiwan_time(utc_time: datetime) -> datetime:
+    """將 UTC 時間轉換為台灣時間"""
+    if utc_time.tzinfo is None:
+        # 如果沒有時區信息，假設是 UTC
+        utc_time = utc_time.replace(tzinfo=timezone.utc)
+    return utc_time.astimezone(TAIWAN_TIMEZONE)
+
+def taiwan_to_utc_time(taiwan_time: datetime) -> datetime:
+    """將台灣時間轉換為 UTC 時間"""
+    if taiwan_time.tzinfo is None:
+        # 如果沒有時區信息，假設是台灣時間
+        taiwan_time = taiwan_time.replace(tzinfo=TAIWAN_TIMEZONE)
+    return taiwan_time.astimezone(timezone.utc)
+
+def format_taiwan_datetime(dt: datetime) -> str:
+    """將時間格式化為台灣時間字符串"""
+    taiwan_time = utc_to_taiwan_time(dt) if dt.tzinfo == timezone.utc else dt
+    return taiwan_time.strftime('%Y-%m-%d %H:%M:%S (UTC+8)')
+
+def parse_article_publish_time(article_html: str = None) -> datetime:
+    """
+    從文章 HTML 中提取發布時間，如果無法提取則使用當前時間
+    
+    Args:
+        article_html: 文章的 HTML 內容（可選）
+        
+    Returns:
+        datetime: UTC 時間戳
+    """
+    # 目前先返回當前 UTC 時間，後續可以擴展解析邏輯
+    # TODO: 添加從 Yahoo Finance 文章中解析時間的邏輯
+    current_utc = get_current_utc_time()
+    print(f"📅 設定文章發布時間為當前時間: {format_taiwan_datetime(current_utc)}")
+    return current_utc 
