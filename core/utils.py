@@ -231,6 +231,54 @@ def validate_discord_webhook(webhook: str) -> bool:
     """驗證 Discord Webhook URL 格式"""
     return webhook.startswith("https://discord.com/api/webhooks/")
 
+def normalize_language_code(language: str) -> str:
+    """標準化語言代碼格式 - 將不同格式轉換為統一的下劃線格式"""
+    if not language:
+        return "zh_tw"  # 預設值
+    
+    # 建立轉換映射表
+    language_mappings = {
+        # 中文繁體
+        "zh-TW": "zh_tw",
+        "zh-tw": "zh_tw", 
+        "zh_TW": "zh_tw",
+        "zh_tw": "zh_tw",
+        "zh-hant": "zh_tw",
+        "zh_hant": "zh_tw",
+        
+        # 中文簡體
+        "zh-CN": "zh_cn",
+        "zh-cn": "zh_cn",
+        "zh_CN": "zh_cn", 
+        "zh_cn": "zh_cn",
+        "zh-hans": "zh_cn",
+        "zh_hans": "zh_cn",
+        
+        # 英文美式
+        "en-US": "en_us",
+        "en-us": "en_us",
+        "en_US": "en_us",
+        "en_us": "en_us",
+        
+        # 通用英文
+        "en": "en",
+        "EN": "en",
+        
+        # 通用中文
+        "zh": "zh",
+        "ZH": "zh"
+    }
+    
+    # 直接查找映射
+    normalized = language_mappings.get(language)
+    if normalized:
+        print(f"🔄 語言代碼轉換: {language} -> {normalized}")
+        return normalized
+    
+    # 如果沒有找到映射，返回原值（讓驗證器處理）
+    print(f"⚠️ 未知的語言代碼格式: {language}")
+    return language
+
 def validate_keywords(keywords: List[str]) -> bool:
     """驗證關鍵字列表"""
     if not isinstance(keywords, list):

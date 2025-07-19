@@ -69,11 +69,22 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     print(f"❌ 驗證錯誤: {exc.errors()}")
     print(f"❌ 詳細堆疊: {traceback.format_exc()}")
     
+    # 處理錯誤信息，確保能夠 JSON 序列化
+    error_details = []
+    for error in exc.errors():
+        serializable_error = {
+            "type": error.get("type"),
+            "loc": error.get("loc"),
+            "msg": error.get("msg"),
+            "input": error.get("input")
+        }
+        error_details.append(serializable_error)
+    
     return JSONResponse(
         status_code=422,
         content={
-            "detail": exc.errors(),
-            "body": str(exc.body) if hasattr(exc, 'body') else None
+            "detail": error_details,
+            "message": "Validation error occurred"
         }
     )
 

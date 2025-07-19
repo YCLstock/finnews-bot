@@ -59,6 +59,10 @@ class DatabaseManager:
         """根據用戶 ID 獲取單一訂閱任務"""
         try:
             print(f"🔍 資料庫查詢: 正在查詢用戶 {user_id} 的訂閱")
+            
+            # 先確保用戶 profile 存在（靜默處理）
+            self.ensure_user_profile_exists(user_id)
+            
             data = self.supabase.table("subscriptions").select("*").eq("user_id", user_id).execute()
             
             if hasattr(data, 'data') and data.data:
@@ -77,18 +81,98 @@ class DatabaseManager:
             # 重新拋出異常，讓上層處理
             raise e
     
+    def ensure_user_profile_exists(self, user_id: str) -> bool:
+        """確保用戶 profile 存在，如果不存在則創建"""
+        try:
+            print(f"🔍 檢查用戶 {user_id} 的 profile 是否存在")
+            
+            # 檢查 profile 是否存在
+            profile_result = self.supabase.table("profiles").select("id").eq("id", user_id).execute()
+            
+            if profile_result.data:
+                print(f"✅ 用戶 {user_id} 的 profile 已存在")
+                return True
+            
+            print(f"📝 用戶 {user_id} 的 profile 不存在，正在創建...")
+            
+            # 創建 profile 記錄
+            try:
+                # 嘗試從 auth.users 獲取用戶資訊
+                username = None
+                try:
+                    # 使用 RPC 函數或直接查詢（需要 service role key）
+                    auth_user_result = self.supabase.table("auth.users").select("email, raw_user_meta_data").eq("id", user_id).execute()
+                    if auth_user_result.data:
+                        user_data = auth_user_result.data[0]
+                        # 嘗試從 email 或 metadata 獲取用戶名
+                        username = user_data.get("email", "").split("@")[0] if user_data.get("email") else None
+                        if not username and user_data.get("raw_user_meta_data"):
+                            meta_data = user_data.get("raw_user_meta_data", {})
+                            username = meta_data.get("name") or meta_data.get("full_name") or meta_data.get("user_name")
+                except Exception as auth_error:
+                    print(f"⚠️ 無法從 auth.users 獲取用戶資訊: {auth_error}")
+                
+                profile_data = {
+                    "id": user_id,
+                    "platform_user_id": user_id,  # 使用 user_id 作為 platform_user_id
+                    "username": username  # 從 auth 資料獲取的用戶名
+                }
+                
+                create_result = self.supabase.table("profiles").insert(profile_data).execute()
+                
+                if create_result.data:
+                    print(f"✅ 成功創建用戶 {user_id} 的 profile")
+                    return True
+                else:
+                    print(f"❌ 創建 profile 失敗: 無資料返回")
+                    return False
+                    
+            except Exception as create_error:
+                print(f"❌ 創建 profile 時發生錯誤: {create_error}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ 檢查/創建用戶 profile 錯誤: {e}")
+            return False
+    
     def create_subscription(self, subscription_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """創建新的訂閱任務（使用 UPSERT，因為每個用戶只能有一個訂閱）"""
         try:
+            user_id = subscription_data.get("user_id")
+            if not user_id:
+                print("❌ 創建訂閱錯誤: 缺少 user_id")
+                return None
+            
+            # 確保用戶 profile 存在
+            if not self.ensure_user_profile_exists(user_id):
+                print(f"❌ 無法確保用戶 {user_id} 的 profile 存在")
+                return None
+            
+            print(f"📝 正在創建/更新訂閱: {subscription_data}")
             result = self.supabase.table("subscriptions").upsert(subscription_data).execute()
-            return result.data[0] if result.data else None
+            
+            if result.data:
+                print(f"✅ 成功創建/更新訂閱")
+                return result.data[0]
+            else:
+                print("❌ 創建訂閱失敗: 無資料返回")
+                return None
+                
         except Exception as e:
             print(f"❌ 創建訂閱錯誤: {e}")
+            print(f"❌ 錯誤類型: {type(e).__name__}")
+            import traceback
+            print(f"❌ 詳細堆疊: {traceback.format_exc()}")
             return None
     
     def update_subscription(self, user_id: str, update_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """更新訂閱任務（使用 user_id 作為主鍵）"""
         try:
+            # 確保用戶 profile 存在
+            if not self.ensure_user_profile_exists(user_id):
+                print(f"❌ 無法確保用戶 {user_id} 的 profile 存在")
+                return None
+            
             result = self.supabase.table("subscriptions").update(update_data).eq("user_id", user_id).execute()
             return result.data[0] if result.data else None
         except Exception as e:

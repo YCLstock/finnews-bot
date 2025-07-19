@@ -2,9 +2,9 @@ from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, validator
 
-from api.auth import get_current_user_id
+from api.auth import get_current_user_id, verify_supabase_jwt
 from core.database import db_manager
-from core.utils import validate_discord_webhook, validate_keywords
+from core.utils import validate_discord_webhook, validate_keywords, normalize_language_code
 
 router = APIRouter(prefix="/subscriptions", tags=["subscriptions"])
 
@@ -45,12 +45,17 @@ class SubscriptionCreate(BaseModel):
     @validator('summary_language')
     def validate_summary_language(cls, v):
         print(f"🔍 驗證摘要語言: {v}")
+        
+        # 標準化語言代碼格式
+        normalized_language = normalize_language_code(v)
+        
         valid_languages = ['zh_tw', 'zh_cn', 'en_us', 'en', 'zh']
-        if v not in valid_languages:
-            print(f"❌ 摘要語言驗證失敗: {v}")
+        if normalized_language not in valid_languages:
+            print(f"❌ 摘要語言驗證失敗: {normalized_language}")
             raise ValueError(f'summary_language must be one of: {", ".join(valid_languages)}')
-        print(f"✅ 摘要語言驗證通過: {v}")
-        return v
+        
+        print(f"✅ 摘要語言驗證通過: {normalized_language}")
+        return normalized_language
 
 class SubscriptionUpdate(BaseModel):
     """更新訂閱的請求模型"""
@@ -82,9 +87,18 @@ class SubscriptionUpdate(BaseModel):
     @validator('summary_language')
     def validate_summary_language(cls, v):
         if v is not None:
+            print(f"🔍 更新驗證摘要語言: {v}")
+            
+            # 標準化語言代碼格式
+            normalized_language = normalize_language_code(v)
+            
             valid_languages = ['zh_tw', 'zh_cn', 'en_us', 'en', 'zh']
-            if v not in valid_languages:
+            if normalized_language not in valid_languages:
+                print(f"❌ 更新摘要語言驗證失敗: {normalized_language}")
                 raise ValueError(f'summary_language must be one of: {", ".join(valid_languages)}')
+            
+            print(f"✅ 更新摘要語言驗證通過: {normalized_language}")
+            return normalized_language
         return v
 
 class SubscriptionResponse(BaseModel):
