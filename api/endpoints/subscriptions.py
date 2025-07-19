@@ -20,14 +20,20 @@ class SubscriptionCreate(BaseModel):
     
     @validator('delivery_target')
     def validate_webhook(cls, v):
+        print(f"🔍 驗證 Discord Webhook URL: {v}")
         if not validate_discord_webhook(v):
-            raise ValueError('Invalid Discord webhook URL')
+            print(f"❌ Discord Webhook URL 驗證失敗: {v}")
+            raise ValueError(f'Invalid Discord webhook URL: {v}. Must start with https://discord.com/api/webhooks/')
+        print(f"✅ Discord Webhook URL 驗證通過: {v}")
         return v
     
     @validator('keywords')
     def validate_keywords_list(cls, v):
+        print(f"🔍 驗證關鍵字列表: {v}")
         if not validate_keywords(v):
-            raise ValueError('Invalid keywords list (max 10 keywords)')
+            print(f"❌ 關鍵字列表驗證失敗: {v}")
+            raise ValueError(f'Invalid keywords list: {v}. Max 10 keywords, each must be non-empty string.')
+        print(f"✅ 關鍵字列表驗證通過: {v}")
         return v
     
     @validator('push_frequency_type')
@@ -38,9 +44,12 @@ class SubscriptionCreate(BaseModel):
     
     @validator('summary_language')
     def validate_summary_language(cls, v):
+        print(f"🔍 驗證摘要語言: {v}")
         valid_languages = ['zh_tw', 'zh_cn', 'en_us', 'en', 'zh']
         if v not in valid_languages:
+            print(f"❌ 摘要語言驗證失敗: {v}")
             raise ValueError(f'summary_language must be one of: {", ".join(valid_languages)}')
+        print(f"✅ 摘要語言驗證通過: {v}")
         return v
 
 class SubscriptionUpdate(BaseModel):
@@ -130,6 +139,7 @@ async def create_or_update_subscription(
     """
     try:
         print(f"📝 正在創建/更新用戶 {current_user_id} 的訂閱")
+        print(f"📝 收到的資料: {subscription_data.dict()}")
         print(f"📝 語言設定: {subscription_data.summary_language}")
         
         # 準備資料庫資料

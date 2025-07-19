@@ -1,6 +1,9 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
+import traceback
 
 from core.config import settings
 from api.endpoints import subscriptions, history
@@ -47,6 +50,32 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["*"],
 )
+
+# 添加請求驗證錯誤處理器
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """處理 422 驗證錯誤並提供詳細信息"""
+    print(f"❌ 422 驗證錯誤詳情:")
+    print(f"❌ 請求 URL: {request.url}")
+    print(f"❌ 請求方法: {request.method}")
+    
+    # 嘗試讀取請求體
+    try:
+        body = await request.body()
+        print(f"❌ 請求體: {body.decode('utf-8')}")
+    except Exception as e:
+        print(f"❌ 無法讀取請求體: {e}")
+    
+    print(f"❌ 驗證錯誤: {exc.errors()}")
+    print(f"❌ 詳細堆疊: {traceback.format_exc()}")
+    
+    return JSONResponse(
+        status_code=422,
+        content={
+            "detail": exc.errors(),
+            "body": str(exc.body) if hasattr(exc, 'body') else None
+        }
+    )
 
 # 註冊路由
 app.include_router(subscriptions.router, prefix="/api/v1")

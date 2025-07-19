@@ -237,4 +237,8 @@ def validate_keywords(keywords: List[str]) -> bool:
         return False
     if len(keywords) > 10:  # 限制最多10個關鍵字
         return False
+    # 空列表是有效的
+    if len(keywords) == 0:
+        return True
+    # 檢查每個關鍵字都是非空字符串
     return all(isinstance(keyword, str) and len(keyword.strip()) > 0 for keyword in keywords) 
