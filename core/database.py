@@ -58,11 +58,24 @@ class DatabaseManager:
     def get_subscription_by_user(self, user_id: str) -> Optional[Dict[str, Any]]:
         """根據用戶 ID 獲取單一訂閱任務"""
         try:
+            print(f"🔍 資料庫查詢: 正在查詢用戶 {user_id} 的訂閱")
             data = self.supabase.table("subscriptions").select("*").eq("user_id", user_id).execute()
-            return data.data[0] if data.data else None
+            
+            if hasattr(data, 'data') and data.data:
+                print(f"✅ 資料庫查詢成功: 找到用戶 {user_id} 的訂閱")
+                return data.data[0]
+            else:
+                print(f"📭 資料庫查詢成功: 用戶 {user_id} 暫無訂閱記錄")
+                return None
+                
         except Exception as e:
-            print(f"❌ 讀取用戶訂閱錯誤: {e}")
-            return None
+            print(f"❌ 資料庫查詢錯誤: {e}")
+            print(f"❌ 錯誤類型: {type(e).__name__}")
+            import traceback
+            print(f"❌ 詳細堆疊: {traceback.format_exc()}")
+            
+            # 重新拋出異常，讓上層處理
+            raise e
     
     def create_subscription(self, subscription_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """創建新的訂閱任務（使用 UPSERT，因為每個用戶只能有一個訂閱）"""

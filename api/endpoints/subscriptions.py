@@ -82,8 +82,28 @@ async def get_user_subscription(current_user_id: str = Depends(get_current_user_
     """
     獲取當前用戶的訂閱（單一訂閱）
     """
-    subscription = db_manager.get_subscription_by_user(current_user_id)
-    return subscription
+    try:
+        print(f"🔍 正在查詢用戶訂閱: {current_user_id}")
+        subscription = db_manager.get_subscription_by_user(current_user_id)
+        
+        if subscription is None:
+            print(f"📭 用戶 {current_user_id} 暫無訂閱")
+        else:
+            print(f"✅ 成功獲取用戶 {current_user_id} 的訂閱")
+            
+        return subscription
+        
+    except Exception as e:
+        print(f"❌ 獲取用戶訂閱時發生錯誤: {str(e)}")
+        print(f"❌ 錯誤類型: {type(e).__name__}")
+        import traceback
+        print(f"❌ 詳細錯誤: {traceback.format_exc()}")
+        
+        # 返回 500 錯誤而不是讓系統返回 403
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve subscription: {str(e)}"
+        )
 
 @router.post("/", response_model=SubscriptionResponse, status_code=status.HTTP_201_CREATED)
 async def create_or_update_subscription(
@@ -122,12 +142,26 @@ async def update_subscription(
     """
     更新用戶的訂閱
     """
-    # 檢查用戶是否有訂閱
-    existing_subscription = db_manager.get_subscription_by_user(current_user_id)
-    if not existing_subscription:
+    try:
+        print(f"🔄 正在更新用戶 {current_user_id} 的訂閱")
+        
+        # 檢查用戶是否有訂閱
+        existing_subscription = db_manager.get_subscription_by_user(current_user_id)
+        if not existing_subscription:
+            print(f"❌ 更新失敗: 用戶 {current_user_id} 沒有訂閱記錄")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Subscription not found"
+            )
+            
+    except HTTPException:
+        # 重新拋出 HTTP 異常
+        raise
+    except Exception as e:
+        print(f"❌ 檢查訂閱存在性時發生錯誤: {str(e)}")
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Subscription not found"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to check existing subscription: {str(e)}"
         )
     
     # 準備更新資料（只包含非 None 的欄位）
@@ -158,12 +192,26 @@ async def delete_subscription(
     """
     刪除用戶的訂閱
     """
-    # 檢查用戶是否有訂閱
-    existing_subscription = db_manager.get_subscription_by_user(current_user_id)
-    if not existing_subscription:
+    try:
+        print(f"🗑️ 正在刪除用戶 {current_user_id} 的訂閱")
+        
+        # 檢查用戶是否有訂閱
+        existing_subscription = db_manager.get_subscription_by_user(current_user_id)
+        if not existing_subscription:
+            print(f"❌ 刪除失敗: 用戶 {current_user_id} 沒有訂閱記錄")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Subscription not found"
+            )
+            
+    except HTTPException:
+        # 重新拋出 HTTP 異常
+        raise
+    except Exception as e:
+        print(f"❌ 檢查訂閱存在性時發生錯誤: {str(e)}")
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Subscription not found"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to check existing subscription: {str(e)}"
         )
     
     success = db_manager.delete_subscription(current_user_id)
@@ -180,12 +228,26 @@ async def toggle_subscription(
     """
     切換用戶訂閱的啟用/停用狀態
     """
-    # 檢查用戶是否有訂閱
-    existing_subscription = db_manager.get_subscription_by_user(current_user_id)
-    if not existing_subscription:
+    try:
+        print(f"🔄 正在切換用戶 {current_user_id} 的訂閱狀態")
+        
+        # 檢查用戶是否有訂閱
+        existing_subscription = db_manager.get_subscription_by_user(current_user_id)
+        if not existing_subscription:
+            print(f"❌ 切換失敗: 用戶 {current_user_id} 沒有訂閱記錄")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Subscription not found"
+            )
+            
+    except HTTPException:
+        # 重新拋出 HTTP 異常
+        raise
+    except Exception as e:
+        print(f"❌ 檢查訂閱存在性時發生錯誤: {str(e)}")
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Subscription not found"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to check existing subscription: {str(e)}"
         )
     
     # 切換啟用/停用狀態
