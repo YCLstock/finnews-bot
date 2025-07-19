@@ -15,7 +15,7 @@ class SubscriptionCreate(BaseModel):
     delivery_target: str  # Discord Webhook URL
     keywords: List[str] = []
     news_sources: List[str] = ["yahoo_finance"]  # 預設新聞源
-    summary_language: str = "zh_tw"  # 預設繁體中文
+    summary_language: str = "zh-tw"  # 預設繁體中文
     push_frequency_type: str = "daily"  # 新的推送頻率類型
     
     @validator('delivery_target')
@@ -49,7 +49,7 @@ class SubscriptionCreate(BaseModel):
         # 標準化語言代碼格式
         normalized_language = normalize_language_code(v)
         
-        valid_languages = ['zh_tw', 'zh_cn', 'en_us', 'en', 'zh']
+        valid_languages = ['zh-tw', 'zh-cn', 'en-us', 'en', 'zh']
         if normalized_language not in valid_languages:
             print(f"❌ 摘要語言驗證失敗: {normalized_language}")
             raise ValueError(f'summary_language must be one of: {", ".join(valid_languages)}')
@@ -92,7 +92,7 @@ class SubscriptionUpdate(BaseModel):
             # 標準化語言代碼格式
             normalized_language = normalize_language_code(v)
             
-            valid_languages = ['zh_tw', 'zh_cn', 'en_us', 'en', 'zh']
+            valid_languages = ['zh-tw', 'zh-cn', 'en-us', 'en', 'zh']
             if normalized_language not in valid_languages:
                 print(f"❌ 更新摘要語言驗證失敗: {normalized_language}")
                 raise ValueError(f'summary_language must be one of: {", ".join(valid_languages)}')

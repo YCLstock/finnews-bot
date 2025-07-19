@@ -232,33 +232,33 @@ def validate_discord_webhook(webhook: str) -> bool:
     return webhook.startswith("https://discord.com/api/webhooks/")
 
 def normalize_language_code(language: str) -> str:
-    """標準化語言代碼格式 - 將不同格式轉換為統一的下劃線格式"""
+    """標準化語言代碼格式 - 將不同格式轉換為資料庫 enum 支援的連字號格式"""
     if not language:
-        return "zh_tw"  # 預設值
+        return "zh-tw"  # 預設值（符合資料庫 enum）
     
-    # 建立轉換映射表
+    # 建立轉換映射表 - 統一轉換為連字號格式（符合資料庫 enum）
     language_mappings = {
-        # 中文繁體
-        "zh-TW": "zh_tw",
-        "zh-tw": "zh_tw", 
-        "zh_TW": "zh_tw",
-        "zh_tw": "zh_tw",
-        "zh-hant": "zh_tw",
-        "zh_hant": "zh_tw",
+        # 中文繁體 - 統一轉為 zh-tw
+        "zh-TW": "zh-tw",
+        "zh-tw": "zh-tw", 
+        "zh_TW": "zh-tw",
+        "zh_tw": "zh-tw",
+        "zh-hant": "zh-tw",
+        "zh_hant": "zh-tw",
         
-        # 中文簡體
-        "zh-CN": "zh_cn",
-        "zh-cn": "zh_cn",
-        "zh_CN": "zh_cn", 
-        "zh_cn": "zh_cn",
-        "zh-hans": "zh_cn",
-        "zh_hans": "zh_cn",
+        # 中文簡體 - 統一轉為 zh-cn
+        "zh-CN": "zh-cn",
+        "zh-cn": "zh-cn",
+        "zh_CN": "zh-cn", 
+        "zh_cn": "zh-cn",
+        "zh-hans": "zh-cn",
+        "zh_hans": "zh-cn",
         
-        # 英文美式
-        "en-US": "en_us",
-        "en-us": "en_us",
-        "en_US": "en_us",
-        "en_us": "en_us",
+        # 英文美式 - 統一轉為 en-us
+        "en-US": "en-us",
+        "en-us": "en-us",
+        "en_US": "en-us",
+        "en_us": "en-us",
         
         # 通用英文
         "en": "en",

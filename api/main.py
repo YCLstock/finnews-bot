@@ -123,7 +123,7 @@ async def get_config():
     return {
         "supabase_url": settings.SUPABASE_URL,
         "supabase_anon_key": settings.SUPABASE_ANON_KEY,
-        "supported_languages": ["zh_tw", "zh_cn", "en_us", "en", "zh"],
+        "supported_languages": ["zh-tw", "zh-cn", "en-us", "en", "zh"],
         "supported_news_sources": ["yahoo_finance"],
         "max_keywords": 10
     }
