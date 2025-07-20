@@ -136,14 +136,25 @@ class NewsCollector:
             
             print(f"  ✅ 文章內容爬取成功 ({len(content)} 字)")
             
-            # 生成摘要
-            print(f"  🤖 開始生成AI摘要...")
-            summary = generate_summary_optimized(content)
-            if "[摘要生成失敗" in summary:
-                print(f"  ❌ AI摘要生成失敗")
-                return None
-            
-            print(f"  ✅ AI摘要生成成功")
+            # 生成摘要（檢查API key）
+            import os
+            if not os.environ.get('OPENAI_API_KEY'):
+                print(f"  ⚠️ 跳過AI摘要生成 - 無OpenAI API key")
+                # 使用文章前200字作為簡單摘要
+                summary = content[:200] + "..." if len(content) > 200 else content
+                print(f"  📝 使用文章前段作為摘要")
+            else:
+                print(f"  🤖 開始生成AI摘要...")
+                try:
+                    summary = generate_summary_optimized(content)
+                    if "[摘要生成失敗" in summary:
+                        print(f"  ❌ AI摘要生成失敗，使用文章前段")
+                        summary = content[:200] + "..." if len(content) > 200 else content
+                    else:
+                        print(f"  ✅ AI摘要生成成功")
+                except Exception as e:
+                    print(f"  ❌ AI摘要調用異常: {e}")
+                    summary = content[:200] + "..." if len(content) > 200 else content
             
             # 解析發布時間
             published_at = parse_article_publish_time()
@@ -170,18 +181,31 @@ class NewsCollector:
         """將文章批量保存到資料庫"""
         if not articles:
             return 0
+        
+        # 檢查資料庫環境變數
+        import os
+        if not os.environ.get('SUPABASE_URL') or not os.environ.get('SUPABASE_SERVICE_KEY'):
+            print("\n⚠️ 跳過資料庫操作 - 缺少Supabase環境變數")
+            return 0
             
         print(f"\n💾 開始保存 {len(articles)} 篇文章到資料庫...")
         success_count = 0
         
         for article in articles:
-            # 移除元數據（資料庫不需要）
-            db_article = {k: v for k, v in article.items() 
-                         if k not in ['collection_type', 'matched_keywords']}
-            
-            article_id = db_manager.save_new_article(db_article)
-            if article_id:
-                success_count += 1
+            try:
+                # 移除元數據（資料庫不需要）
+                db_article = {k: v for k, v in article.items() 
+                             if k not in ['collection_type', 'matched_keywords']}
+                
+                article_id = db_manager.save_new_article(db_article)
+                if article_id:
+                    success_count += 1
+                    print(f"  ✅ 文章保存成功 ({success_count}/{len(articles)})")
+                else:
+                    print(f"  ⚠️ 文章保存返回空ID")
+            except Exception as e:
+                print(f"  ❌ 保存文章失敗: {e}")
+                continue
         
         print(f"✅ 成功保存 {success_count} 篇文章到資料庫")
         return success_count
@@ -195,9 +219,25 @@ class NewsCollector:
         print("=" * 60)
         
         try:
-            # 驗證環境變數
-            settings.validate()
-            print("✅ 環境變數驗證成功")
+            # 檢查基礎環境變數
+            import os
+            missing_vars = []
+            required_vars = ['SUPABASE_URL', 'SUPABASE_SERVICE_KEY']
+            optional_vars = ['OPENAI_API_KEY']
+            
+            for var in required_vars:
+                if not os.environ.get(var):
+                    missing_vars.append(var)
+            
+            if missing_vars:
+                print(f"❌ 缺少必要環境變數: {', '.join(missing_vars)}")
+                return False
+            
+            # 檢查可選環境變數
+            if not os.environ.get('OPENAI_API_KEY'):
+                print("⚠️ 未設置OPENAI_API_KEY，將跳過AI摘要功能")
+            
+            print("✅ 環境變數檢查完成")
             
             # 1. 收集核心財經新聞
             core_articles = self.collect_core_articles(limit=20)
