@@ -128,14 +128,22 @@ class NewsCollector:
         """處理單篇文章"""
         try:
             # 爬取文章內容
+            print(f"  📥 開始爬取文章內容...")
             content = self.scraper.scrape_article_content(news_item['link'])
             if not content:
+                print(f"  ❌ 文章內容爬取失敗")
                 return None
             
+            print(f"  ✅ 文章內容爬取成功 ({len(content)} 字)")
+            
             # 生成摘要
+            print(f"  🤖 開始生成AI摘要...")
             summary = generate_summary_optimized(content)
             if "[摘要生成失敗" in summary:
+                print(f"  ❌ AI摘要生成失敗")
                 return None
+            
+            print(f"  ✅ AI摘要生成成功")
             
             # 解析發布時間
             published_at = parse_article_publish_time()
