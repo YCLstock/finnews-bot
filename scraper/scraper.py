@@ -74,6 +74,14 @@ class NewsScraperManager:
         - 使用複合選擇器以應對多種頁面版面
         """
         print(f"🦾 [Selenium] 正在啟動瀏覽器抓取完整 URL: {url}")
+        
+        # 導入必要模組
+        import os
+        import shutil
+        import stat
+        import platform
+        from webdriver_manager.chrome import ChromeDriverManager
+        
         chrome_options = Options()
         
         # GitHub Actions / Linux 環境優化選項
@@ -108,13 +116,6 @@ class NewsScraperManager:
 
         driver = None
         try:
-            # 修復Linux環境下ChromeDriver路徑問題
-            from webdriver_manager.chrome import ChromeDriverManager
-            import os
-            import shutil
-            import stat
-            import platform
-            
             # 清除舊的driver緩存
             cache_path = os.path.expanduser("~/.wdm")
             if os.path.exists(cache_path):
