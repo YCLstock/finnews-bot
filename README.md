@@ -1,8 +1,23 @@
-# FinNews-Bot 2.0
+# FinNews-Bot 2.0 🤖📰
+
+智能財經新聞推送系統 - 基於AWS Serverless架構
 
 [![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green.svg)](https://fastapi.tiangolo.com)
+[![AWS Lambda](https://img.shields.io/badge/AWS-Lambda-orange.svg)](https://aws.amazon.com/lambda/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+## 🏗️ 系統架構
+
+```
+AWS Lambda(爬蟲+推送) → Supabase(資料庫) → Render(API) → Vercel(前端)
+```
+
+### 組件說明
+- **AWS Lambda**: 新聞爬蟲 + 智能推送
+- **Supabase**: 資料存儲 + 用戶管理  
+- **Render**: 後端API服務 (用戶註冊、訂閱管理)
+- **Vercel**: 前端界面
 
 **自動化財經新聞摘要推送系統** - 透過 AI 摘要和智能推送頻率控制，讓您不錯過重要財經資訊。
 
