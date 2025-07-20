@@ -156,6 +156,7 @@ class NewsCollector:
                     print(f"  ❌ AI摘要調用異常: {e}")
                     summary = content[:200] + "..." if len(content) > 200 else content
             
+            
             # 解析發布時間
             published_at = parse_article_publish_time()
             
