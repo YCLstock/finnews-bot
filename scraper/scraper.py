@@ -129,7 +129,7 @@ class NewsScraperManager:
 
         driver = None
         try:
-            # 清除舊的driver緩存
+            # 清除舊的driver緩存（使用穩定版本）
             cache_path = os.path.expanduser("~/.wdm")
             if os.path.exists(cache_path):
                 try:
@@ -138,91 +138,20 @@ class NewsScraperManager:
                 except:
                     pass
             
-            # 下載並修復ChromeDriver路徑
+            # 使用webdriver-manager 3.8.6下載ChromeDriver
+            print("📥 使用webdriver-manager 3.8.6下載ChromeDriver...")
             driver_path = ChromeDriverManager().install()
+            print(f"✅ ChromeDriver路徑: {driver_path}")
             
-            # Linux環境特殊處理
-            if platform.system() == "Linux":
-                print(f"🔍 檢查ChromeDriver路徑: {driver_path}")
-                
-                # 檢查是否指向錯誤的文件或不可執行
-                needs_fix = (
-                    "THIRD_PARTY_NOTICES" in driver_path or 
-                    not os.path.isfile(driver_path) or
-                    not os.access(driver_path, os.X_OK)
-                )
-                
-                if needs_fix:
-                    print("⚠️ ChromeDriver路徑需要修復")
-                    # 嘗試找到正確的chromedriver執行檔
-                    driver_dir = os.path.dirname(driver_path)
-                    base_dir = os.path.dirname(driver_dir)
-                    
-                    possible_paths = [
-                        # 在同目錄下尋找
-                        os.path.join(driver_dir, "chromedriver"),
-                        # 在chromedriver-linux64子目錄中尋找
-                        os.path.join(driver_dir, "chromedriver-linux64", "chromedriver"),
-                        # 在父目錄中尋找
-                        os.path.join(base_dir, "chromedriver"),
-                        # 遞歸查找所有可能位置
-                        os.path.join(base_dir, "chromedriver-linux64", "chromedriver"),
-                    ]
-                    
-                    # 如果上述路徑都不存在，進行深度搜索
-                    print("🔍 進行深度搜索...")
-                    try:
-                        wdm_root = os.path.expanduser("~/.wdm")
-                        for root, dirs, files in os.walk(wdm_root):
-                            for file in files:
-                                if file == "chromedriver":
-                                    candidate = os.path.join(root, file)
-                                    print(f"  發現候選檔案: {candidate}")
-                                    # 檢查是否可執行
-                                    if os.access(candidate, os.X_OK):
-                                        print(f"  ✅ 可執行: {candidate}")
-                                        possible_paths.append(candidate)
-                                    else:
-                                        print(f"  ⚠️ 不可執行，嘗試設置權限: {candidate}")
-                                        try:
-                                            os.chmod(candidate, 0o755)
-                                            if os.access(candidate, os.X_OK):
-                                                print(f"  ✅ 權限修復成功: {candidate}")
-                                                possible_paths.append(candidate)
-                                        except Exception as chmod_e:
-                                            print(f"  ❌ 權限設置失敗: {chmod_e}")
-                    except Exception as e:
-                        print(f"深度搜索失敗: {e}")
-                    
-                    # 嘗試每個可能的路徑
-                    fixed = False
-                    for path in possible_paths:
-                        if os.path.isfile(path) and os.access(path, os.X_OK):
-                            driver_path = path
-                            print(f"🔧 修正ChromeDriver路徑: {driver_path}")
-                            fixed = True
-                            break
-                    
-                    if not fixed:
-                        print("❌ 無法找到有效的ChromeDriver執行檔")
-                        print(f"🔍 嘗試過的路徑: {possible_paths}")
-                        return None
-                
-                # 確保執行權限
-                if os.path.isfile(driver_path):
-                    try:
-                        current_permissions = os.stat(driver_path).st_mode
-                        os.chmod(driver_path, current_permissions | stat.S_IEXEC)
-                        print("✅ 已設置ChromeDriver執行權限")
-                    except Exception as e:
-                        print(f"⚠️ 設置執行權限失敗: {e}")
-                        
-                # 最終驗證
-                if not os.access(driver_path, os.X_OK):
-                    print("❌ ChromeDriver仍然不可執行")
+            # Linux環境基本檢查（webdriver-manager 3.8.6應該處理得更好）
+            if platform.system() == "Linux" and not os.access(driver_path, os.X_OK):
+                print("🔧 設置ChromeDriver執行權限...")
+                try:
+                    os.chmod(driver_path, 0o755)
+                    print("✅ 執行權限設置成功")
+                except Exception as e:
+                    print(f"⚠️ 權限設置失敗: {e}")
                     return None
-                else:
-                    print(f"✅ ChromeDriver驗證通過: {driver_path}")
             
             service = Service(driver_path)
             driver = webdriver.Chrome(service=service, options=chrome_options)
