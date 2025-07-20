@@ -24,7 +24,9 @@ class NewsCollector:
     """混合策略新聞收集器"""
     
     def __init__(self):
+        print("    🔧 初始化NewsScraperManager...")
         self.scraper = NewsScraperManager()
+        print("    ✅ NewsScraperManager初始化完成")
         
     def get_all_user_keywords(self) -> Set[str]:
         """獲取所有活躍用戶的關鍵字"""
@@ -297,9 +299,28 @@ class NewsCollector:
 
 def main():
     """主執行函數"""
-    collector = NewsCollector()
-    success = collector.run_collection()
-    return 0 if success else 1
+    print("🔧 開始初始化新聞收集器...")
+    
+    try:
+        print("  📦 創建NewsCollector實例...")
+        collector = NewsCollector()
+        print("  ✅ NewsCollector實例創建成功")
+        
+        print("  🚀 開始執行收集任務...")
+        success = collector.run_collection()
+        
+        if success:
+            print("✅ 主函數執行成功")
+        else:
+            print("⚠️ 主函數執行完成但無成功結果")
+        
+        return 0 if success else 1
+        
+    except Exception as e:
+        print(f"❌ 主函數執行失敗: {e}")
+        import traceback
+        traceback.print_exc()
+        return 1
 
 if __name__ == "__main__":
     exit_code = main()
