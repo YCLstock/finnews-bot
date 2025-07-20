@@ -143,27 +143,71 @@ class NewsScraperManager:
             
             # Linux環境特殊處理
             if platform.system() == "Linux":
-                # 檢查是否指向錯誤的文件
-                if "THIRD_PARTY_NOTICES" in driver_path or not os.path.isfile(driver_path):
+                print(f"🔍 檢查ChromeDriver路徑: {driver_path}")
+                
+                # 檢查是否指向錯誤的文件或不可執行
+                needs_fix = (
+                    "THIRD_PARTY_NOTICES" in driver_path or 
+                    not os.path.isfile(driver_path) or
+                    not os.access(driver_path, os.X_OK)
+                )
+                
+                if needs_fix:
+                    print("⚠️ ChromeDriver路徑需要修復")
                     # 嘗試找到正確的chromedriver執行檔
                     driver_dir = os.path.dirname(driver_path)
+                    base_dir = os.path.dirname(driver_dir)
+                    
                     possible_paths = [
+                        # 在同目錄下尋找
                         os.path.join(driver_dir, "chromedriver"),
+                        # 在chromedriver-linux64子目錄中尋找
                         os.path.join(driver_dir, "chromedriver-linux64", "chromedriver"),
-                        os.path.join(os.path.dirname(driver_dir), "chromedriver"),
+                        # 在父目錄中尋找
+                        os.path.join(base_dir, "chromedriver"),
+                        # 遞歸查找所有可能位置
+                        os.path.join(base_dir, "chromedriver-linux64", "chromedriver"),
                     ]
                     
+                    # 如果上述路徑都不存在，進行深度搜索
+                    try:
+                        for root, dirs, files in os.walk(base_dir):
+                            if "chromedriver" in files:
+                                candidate = os.path.join(root, "chromedriver")
+                                if os.access(candidate, os.X_OK):
+                                    possible_paths.append(candidate)
+                    except Exception as e:
+                        print(f"深度搜索失敗: {e}")
+                    
+                    # 嘗試每個可能的路徑
+                    fixed = False
                     for path in possible_paths:
-                        if os.path.isfile(path):
+                        if os.path.isfile(path) and os.access(path, os.X_OK):
                             driver_path = path
                             print(f"🔧 修正ChromeDriver路徑: {driver_path}")
+                            fixed = True
                             break
+                    
+                    if not fixed:
+                        print("❌ 無法找到有效的ChromeDriver執行檔")
+                        print(f"🔍 嘗試過的路徑: {possible_paths}")
+                        return None
                 
                 # 確保執行權限
                 if os.path.isfile(driver_path):
-                    current_permissions = os.stat(driver_path).st_mode
-                    os.chmod(driver_path, current_permissions | stat.S_IEXEC)
-                    print("✅ 已設置ChromeDriver執行權限")
+                    try:
+                        current_permissions = os.stat(driver_path).st_mode
+                        os.chmod(driver_path, current_permissions | stat.S_IEXEC)
+                        print("✅ 已設置ChromeDriver執行權限")
+                    except Exception as e:
+                        print(f"⚠️ 設置執行權限失敗: {e}")
+                        
+                # 最終驗證
+                if not os.access(driver_path, os.X_OK):
+                    print("❌ ChromeDriver仍然不可執行")
+                    return None
+                else:
+                    print(f"✅ ChromeDriver驗證通過: {driver_path}")
             
             service = Service(driver_path)
             driver = webdriver.Chrome(service=service, options=chrome_options)
