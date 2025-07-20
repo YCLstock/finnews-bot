@@ -84,34 +84,47 @@ class NewsScraperManager:
         
         chrome_options = Options()
         
-        # GitHub Actions / Linux 環境優化選項
-        chrome_options.add_argument("--headless=new")  # 使用新版headless模式
+        # 記憶體優化的Chrome設定
+        chrome_options.add_argument("--headless=new")
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
         chrome_options.add_argument("--disable-gpu")
-        chrome_options.add_argument("--disable-software-rasterizer")
+        
+        # 記憶體限制設定
+        chrome_options.add_argument("--memory-pressure-off")
+        chrome_options.add_argument("--max_old_space_size=1024")  # 限制JS堆記憶體為1GB
+        chrome_options.add_argument("--aggressive-cache-discard")
         chrome_options.add_argument("--disable-background-timer-throttling")
-        chrome_options.add_argument("--disable-backgrounding-occluded-windows")
         chrome_options.add_argument("--disable-renderer-backgrounding")
-        chrome_options.add_argument("--disable-features=TranslateUI")
+        chrome_options.add_argument("--disable-backgrounding-occluded-windows")
+        chrome_options.add_argument("--disable-background-networking")
+        
+        # 功能禁用（減少記憶體佔用）
         chrome_options.add_argument("--disable-extensions")
-        chrome_options.add_argument("--disable-default-apps")
-        chrome_options.add_argument("--window-size=1920,1080")
-        chrome_options.add_argument("--start-maximized")
+        chrome_options.add_argument("--disable-plugins")
+        chrome_options.add_argument("--disable-images")  # 禁用圖片載入
+        chrome_options.add_argument("--disable-javascript")  # 禁用JavaScript（新聞內容通常在HTML中）
+        chrome_options.add_argument("--disable-css")  # 禁用CSS
+        chrome_options.add_argument("--disable-features=TranslateUI,VizDisplayCompositor")
+        chrome_options.add_argument("--disable-ipc-flooding-protection")
+        
+        # 窗口和渲染設定
+        chrome_options.add_argument("--window-size=1024,768")  # 減小窗口尺寸
         chrome_options.add_argument("--disable-web-security")
         chrome_options.add_argument("--ignore-certificate-errors")
-        chrome_options.add_argument("--ignore-ssl-errors")
-        chrome_options.add_argument("--ignore-certificate-errors-spki-list")
         chrome_options.add_argument("--disable-blink-features=AutomationControlled")
         
-        # 特殊處理：GitHub Actions 環境
+        # GitHub Actions特殊設定
         if os.environ.get('GITHUB_ACTIONS'):
-            chrome_options.add_argument("--virtual-time-budget=10000")
-            chrome_options.add_argument("--run-all-compositor-stages-before-draw")
+            chrome_options.add_argument("--single-process")  # 強制單進程模式
+            chrome_options.add_argument("--disable-software-rasterizer")
             chrome_options.add_argument("--disable-background-networking")
+            print("🔧 GitHub Actions環境：啟用記憶體優化模式")
             
         chrome_options.add_experimental_option('excludeSwitches', ['enable-automation'])
         chrome_options.add_experimental_option('useAutomationExtension', False)
+        
+        # 設定User-Agent
         chrome_options.add_argument("user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36")
 
         driver = None
@@ -161,8 +174,25 @@ class NewsScraperManager:
             
             driver.set_page_load_timeout(settings.SCRAPER_TIMEOUT)
             
+            # 監控記憶體使用
+            try:
+                import psutil
+                process = psutil.Process()
+                memory_before = process.memory_info().rss / 1024 / 1024  # MB
+                print(f"💾 瀏覽器啟動前記憶體: {memory_before:.1f} MB")
+            except ImportError:
+                print("💾 psutil未安裝，跳過記憶體監控")
+            
             print("正在訪問頁面...")
             driver.get(url)
+            
+            # 檢查瀏覽器是否仍然活著
+            try:
+                current_url = driver.current_url
+                print(f"✅ 頁面載入成功: {current_url[:60]}...")
+            except Exception as e:
+                print(f"⚠️ 頁面載入後檢查失敗: {e}")
+                return None
 
             # 處理同意視窗
             try:
@@ -221,8 +251,25 @@ class NewsScraperManager:
             return None
         finally:
             if driver:
-                driver.quit()
-                print("🧹 瀏覽器已關閉。")
+                try:
+                    # 強制清理瀏覽器資源
+                    driver.quit()
+                    print("🧹 瀏覽器已關閉。")
+                except Exception as cleanup_error:
+                    print(f"⚠️ 瀏覽器清理時發生錯誤: {cleanup_error}")
+                    
+                # 額外清理：強制垃圾回收
+                import gc
+                gc.collect()
+                
+                # 記憶體清理後檢查
+                try:
+                    import psutil
+                    process = psutil.Process()
+                    memory_after = process.memory_info().rss / 1024 / 1024  # MB
+                    print(f"💾 清理後記憶體: {memory_after:.1f} MB")
+                except ImportError:
+                    pass
     
     def process_news_for_subscriptions(self) -> bool:
         """
