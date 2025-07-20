@@ -91,10 +91,12 @@ class NewsScraperManager:
 
         driver = None
         try:
-            # 強制重新下載最新版ChromeDriver
+            # 修復Linux環境下ChromeDriver路徑問題
             from webdriver_manager.chrome import ChromeDriverManager
             import os
             import shutil
+            import stat
+            import platform
             
             # 清除舊的driver緩存
             cache_path = os.path.expanduser("~/.wdm")
@@ -105,7 +107,33 @@ class NewsScraperManager:
                 except:
                     pass
             
+            # 下載並修復ChromeDriver路徑
             driver_path = ChromeDriverManager().install()
+            
+            # Linux環境特殊處理
+            if platform.system() == "Linux":
+                # 檢查是否指向錯誤的文件
+                if "THIRD_PARTY_NOTICES" in driver_path or not os.path.isfile(driver_path):
+                    # 嘗試找到正確的chromedriver執行檔
+                    driver_dir = os.path.dirname(driver_path)
+                    possible_paths = [
+                        os.path.join(driver_dir, "chromedriver"),
+                        os.path.join(driver_dir, "chromedriver-linux64", "chromedriver"),
+                        os.path.join(os.path.dirname(driver_dir), "chromedriver"),
+                    ]
+                    
+                    for path in possible_paths:
+                        if os.path.isfile(path):
+                            driver_path = path
+                            print(f"🔧 修正ChromeDriver路徑: {driver_path}")
+                            break
+                
+                # 確保執行權限
+                if os.path.isfile(driver_path):
+                    current_permissions = os.stat(driver_path).st_mode
+                    os.chmod(driver_path, current_permissions | stat.S_IEXEC)
+                    print("✅ 已設置ChromeDriver執行權限")
+            
             service = Service(driver_path)
             driver = webdriver.Chrome(service=service, options=chrome_options)
             
