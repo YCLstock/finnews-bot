@@ -36,20 +36,42 @@ jobs:
         pip install -r requirements.txt
     
     - name: Collect news articles
+      timeout-minutes: 15  # 設定15分鐘超時
       env:
         SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
         SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         YAHOO_FINANCE_URL: https://finance.yahoo.com/topic/stock-market-news
-        SCRAPER_TIMEOUT: 30
+        SCRAPER_TIMEOUT: 20  # 降低單篇文章超時時間
         DISPLAY: :99
+        GITHUB_ACTIONS: true  # 標識GitHub Actions環境
       run: |
         # 啟動虛擬顯示器（Selenium 需要）
-        Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
-        sleep 3
+        echo "🖥️ 啟動虛擬顯示器..."
+        Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &
+        
+        # 等待顯示器啟動並檢查Chrome
+        sleep 5
+        echo "🔍 檢查Chrome安裝..."
+        google-chrome --version
+        
+        # 檢查ChromeDriver可用性
+        echo "🔧 準備ChromeDriver..."
+        python -c "
+        from webdriver_manager.chrome import ChromeDriverManager
+        import os
+        driver_path = ChromeDriverManager().install()
+        print(f'ChromeDriver路徑: {driver_path}')
+        print(f'文件存在: {os.path.exists(driver_path)}')
+        if os.path.exists(driver_path):
+            import stat
+            print(f'權限: {oct(os.stat(driver_path).st_mode)[-3:]}')
+        "
+        
         # 執行新聞收集器
-        python run_news_collector.py
+        echo "🚀 開始執行新聞收集..."
+        timeout 10m python run_news_collector.py || echo "⚠️ 新聞收集器執行超時或失敗"
     
     - name: Upload debug screenshots (if any)
       uses: actions/upload-artifact@v4

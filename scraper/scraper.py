@@ -76,18 +76,35 @@ class NewsScraperManager:
         print(f"🦾 [Selenium] 正在啟動瀏覽器抓取完整 URL: {url}")
         chrome_options = Options()
         
-        # 強化偽裝與穩定性的選項
-        chrome_options.add_argument("--headless")
+        # GitHub Actions / Linux 環境優化選項
+        chrome_options.add_argument("--headless=new")  # 使用新版headless模式
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
         chrome_options.add_argument("--disable-gpu")
-        chrome_options.add_argument("window-size=1920x1080")
-        chrome_options.add_argument('--ignore-certificate-errors')
-        chrome_options.add_argument('--ignore-ssl-errors')
-        chrome_options.add_argument('--disable-blink-features=AutomationControlled')
+        chrome_options.add_argument("--disable-software-rasterizer")
+        chrome_options.add_argument("--disable-background-timer-throttling")
+        chrome_options.add_argument("--disable-backgrounding-occluded-windows")
+        chrome_options.add_argument("--disable-renderer-backgrounding")
+        chrome_options.add_argument("--disable-features=TranslateUI")
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--disable-default-apps")
+        chrome_options.add_argument("--window-size=1920,1080")
+        chrome_options.add_argument("--start-maximized")
+        chrome_options.add_argument("--disable-web-security")
+        chrome_options.add_argument("--ignore-certificate-errors")
+        chrome_options.add_argument("--ignore-ssl-errors")
+        chrome_options.add_argument("--ignore-certificate-errors-spki-list")
+        chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+        
+        # 特殊處理：GitHub Actions 環境
+        if os.environ.get('GITHUB_ACTIONS'):
+            chrome_options.add_argument("--virtual-time-budget=10000")
+            chrome_options.add_argument("--run-all-compositor-stages-before-draw")
+            chrome_options.add_argument("--disable-background-networking")
+            
         chrome_options.add_experimental_option('excludeSwitches', ['enable-automation'])
         chrome_options.add_experimental_option('useAutomationExtension', False)
-        chrome_options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36")
+        chrome_options.add_argument("user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36")
 
         driver = None
         try:
