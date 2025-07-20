@@ -71,9 +71,13 @@ jobs:
         print('✅ Chrome選項配置成功')
         "
         
+        # 先執行快速診斷測試
+        echo "🧪 執行Selenium快速診斷..."
+        timeout 3m python test_selenium_quick.py || echo "⚠️ 快速診斷失敗"
+        
         # 執行新聞收集器
         echo "🚀 開始執行新聞收集..."
-        timeout 10m python run_news_collector.py || echo "⚠️ 新聞收集器執行超時或失敗"
+        timeout 5m python run_news_collector.py || echo "⚠️ 新聞收集器執行超時或失敗"
     
     - name: Upload debug screenshots (if any)
       uses: actions/upload-artifact@v4
