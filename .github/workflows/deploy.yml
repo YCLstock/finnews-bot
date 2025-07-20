@@ -1,0 +1,21 @@
+name: Deploy to Render
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Deploy notification
+      run: |
+        echo "🚀 代碼已推送到 main 分支"
+        echo "📡 Render 將自動部署後端 API"
+        echo "🌐 Vercel 將自動部署前端"
+        echo "☁️ AWS Lambda 需要手動部署（未來可自動化）"
