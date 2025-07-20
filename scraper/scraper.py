@@ -170,12 +170,27 @@ class NewsScraperManager:
                     ]
                     
                     # 如果上述路徑都不存在，進行深度搜索
+                    print("🔍 進行深度搜索...")
                     try:
-                        for root, dirs, files in os.walk(base_dir):
-                            if "chromedriver" in files:
-                                candidate = os.path.join(root, "chromedriver")
-                                if os.access(candidate, os.X_OK):
-                                    possible_paths.append(candidate)
+                        wdm_root = os.path.expanduser("~/.wdm")
+                        for root, dirs, files in os.walk(wdm_root):
+                            for file in files:
+                                if file == "chromedriver":
+                                    candidate = os.path.join(root, file)
+                                    print(f"  發現候選檔案: {candidate}")
+                                    # 檢查是否可執行
+                                    if os.access(candidate, os.X_OK):
+                                        print(f"  ✅ 可執行: {candidate}")
+                                        possible_paths.append(candidate)
+                                    else:
+                                        print(f"  ⚠️ 不可執行，嘗試設置權限: {candidate}")
+                                        try:
+                                            os.chmod(candidate, 0o755)
+                                            if os.access(candidate, os.X_OK):
+                                                print(f"  ✅ 權限修復成功: {candidate}")
+                                                possible_paths.append(candidate)
+                                        except Exception as chmod_e:
+                                            print(f"  ❌ 權限設置失敗: {chmod_e}")
                     except Exception as e:
                         print(f"深度搜索失敗: {e}")
                     
