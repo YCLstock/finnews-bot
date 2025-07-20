@@ -80,7 +80,6 @@ class NewsScraperManager:
         import shutil
         import stat
         import platform
-        from webdriver_manager.chrome import ChromeDriverManager
         
         chrome_options = Options()
         
@@ -129,32 +128,13 @@ class NewsScraperManager:
 
         driver = None
         try:
-            # 清除舊的driver緩存（使用穩定版本）
-            cache_path = os.path.expanduser("~/.wdm")
-            if os.path.exists(cache_path):
-                try:
-                    shutil.rmtree(cache_path)
-                    print("🧹 已清除舊版ChromeDriver緩存")
-                except:
-                    pass
+            # 使用Selenium 4.6+內建的driver管理（不需要webdriver-manager）
+            print("🤖 使用Selenium內建ChromeDriver管理...")
             
-            # 使用webdriver-manager 3.8.6下載ChromeDriver
-            print("📥 使用webdriver-manager 3.8.6下載ChromeDriver...")
-            driver_path = ChromeDriverManager().install()
-            print(f"✅ ChromeDriver路徑: {driver_path}")
-            
-            # Linux環境基本檢查（webdriver-manager 3.8.6應該處理得更好）
-            if platform.system() == "Linux" and not os.access(driver_path, os.X_OK):
-                print("🔧 設置ChromeDriver執行權限...")
-                try:
-                    os.chmod(driver_path, 0o755)
-                    print("✅ 執行權限設置成功")
-                except Exception as e:
-                    print(f"⚠️ 權限設置失敗: {e}")
-                    return None
-            
-            service = Service(driver_path)
-            driver = webdriver.Chrome(service=service, options=chrome_options)
+            # Selenium會自動下載適合的ChromeDriver版本
+            # 不需要手動指定Service路徑
+            driver = webdriver.Chrome(options=chrome_options)
+            print("✅ Chrome瀏覽器啟動成功（Selenium自動管理驅動）")
             
             driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument', {
                 'source': "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
