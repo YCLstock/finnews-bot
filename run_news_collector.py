@@ -243,7 +243,11 @@ class NewsCollector:
             print("✅ 環境變數檢查完成")
             
             # 1. 收集核心財經新聞
-            core_articles = self.collect_core_articles(limit=20)
+            # GitHub Actions 環境限制處理數量
+            github_limit = int(os.environ.get('GITHUB_ACTIONS_LIMIT', '20'))
+            if os.environ.get('GITHUB_ACTIONS'):
+                print(f"🔧 GitHub Actions 環境：限制處理 {github_limit} 篇文章")
+            core_articles = self.collect_core_articles(limit=github_limit)
             
             # 2. 收集用戶關鍵字相關文章
             user_keywords = self.get_all_user_keywords()
