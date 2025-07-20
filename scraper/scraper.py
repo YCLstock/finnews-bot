@@ -91,7 +91,22 @@ class NewsScraperManager:
 
         driver = None
         try:
-            service = Service(ChromeDriverManager().install())
+            # 強制重新下載最新版ChromeDriver
+            from webdriver_manager.chrome import ChromeDriverManager
+            import os
+            import shutil
+            
+            # 清除舊的driver緩存
+            cache_path = os.path.expanduser("~/.wdm")
+            if os.path.exists(cache_path):
+                try:
+                    shutil.rmtree(cache_path)
+                    print("🧹 已清除舊版ChromeDriver緩存")
+                except:
+                    pass
+            
+            driver_path = ChromeDriverManager().install()
+            service = Service(driver_path)
             driver = webdriver.Chrome(service=service, options=chrome_options)
             
             driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument', {
@@ -117,14 +132,14 @@ class NewsScraperManager:
 
             # 等待並抓取主要內容
             print("⏳ 正在等待文章主要內容容器...")
-            content_container_locator = (By.CSS_SELECTOR, "div.caas-body, div.atoms-wrapper, div.article-wrap.no-bb")
+            content_container_locator = (By.CSS_SELECTOR, '[data-testid="article-content-wrapper"], div.caas-body, div.atoms-wrapper, div.article-wrap.no-bb')
             WebDriverWait(driver, 20).until(
                 EC.presence_of_element_located(content_container_locator)
             )
             print("✅ 內容容器已載入。")
             
             soup = BeautifulSoup(driver.page_source, "html.parser")
-            body = soup.select_one("div.caas-body, div.atoms-wrapper, div.article-wrap.no-bb")
+            body = soup.select_one('[data-testid="article-content-wrapper"], div.caas-body, div.atoms-wrapper, div.article-wrap.no-bb')
 
             if body:
                 paragraphs = body.find_all("p")
@@ -141,7 +156,7 @@ class NewsScraperManager:
                     print("⚠️ 找到 <p> 標籤，但沒有有效文字內容。")
                     return None
             
-            print("❌ 未能找到任何已知的內容容器 (caas-body, body, aoms-wrapper)。")
+            print("❌ 未能找到任何已知的內容容器 (data-testid, caas-body, atoms-wrapper, article-wrap)。")
             return None
 
         except TimeoutException as e:
