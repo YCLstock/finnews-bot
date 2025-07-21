@@ -41,10 +41,10 @@ class DatabaseManager:
         """從 Supabase 讀取所有活躍的訂閱任務"""
         try:
             data = self.supabase.table("subscriptions").select("*").eq("is_active", True).execute()
-            print(f"🗂️ 從資料庫讀取到 {len(data.data)} 個活躍的訂閱任務。")
+            print(f"[DB] Retrieved {len(data.data)} active subscriptions from database")
             return data.data
         except Exception as e:
-            print(f"❌ 讀取訂閱任務錯誤: {e}")
+            print(f"[ERROR] Failed to read subscriptions: {e}")
             return []
     
     def get_subscriptions_by_user(self, user_id: str) -> List[Dict[str, Any]]:
@@ -53,13 +53,13 @@ class DatabaseManager:
             data = self.supabase.table("subscriptions").select("*").eq("user_id", user_id).execute()
             return data.data
         except Exception as e:
-            print(f"❌ 讀取用戶訂閱錯誤: {e}")
+            print(f"[ERROR] 讀取用戶訂閱錯誤: {e}")
             return []
     
     def get_subscription_by_user(self, user_id: str) -> Optional[Dict[str, Any]]:
         """根據用戶 ID 獲取單一訂閱任務"""
         try:
-            print(f"🔍 資料庫查詢: 正在查詢用戶 {user_id} 的訂閱")
+            print(f"[INFO] 資料庫查詢: 正在查詢用戶 {user_id} 的訂閱")
             
             # 先確保用戶 profile 存在（靜默處理）
             self.ensure_user_profile_exists(user_id)
@@ -67,17 +67,17 @@ class DatabaseManager:
             data = self.supabase.table("subscriptions").select("*").eq("user_id", user_id).execute()
             
             if hasattr(data, 'data') and data.data:
-                print(f"✅ 資料庫查詢成功: 找到用戶 {user_id} 的訂閱")
+                print(f"[OK] 資料庫查詢成功: 找到用戶 {user_id} 的訂閱")
                 return data.data[0]
             else:
-                print(f"📭 資料庫查詢成功: 用戶 {user_id} 暫無訂閱記錄")
+                print(f"[INFO] 資料庫查詢成功: 用戶 {user_id} 暫無訂閱記錄")
                 return None
                 
         except Exception as e:
-            print(f"❌ 資料庫查詢錯誤: {e}")
-            print(f"❌ 錯誤類型: {type(e).__name__}")
+            print(f"[ERROR] 資料庫查詢錯誤: {e}")
+            print(f"[ERROR] 錯誤類型: {type(e).__name__}")
             import traceback
-            print(f"❌ 詳細堆疊: {traceback.format_exc()}")
+            print(f"[ERROR] 詳細堆疊: {traceback.format_exc()}")
             
             # 重新拋出異常，讓上層處理
             raise e
@@ -85,16 +85,16 @@ class DatabaseManager:
     def ensure_user_profile_exists(self, user_id: str) -> bool:
         """確保用戶 profile 存在，如果不存在則創建"""
         try:
-            print(f"🔍 檢查用戶 {user_id} 的 profile 是否存在")
+            print(f"[INFO] 檢查用戶 {user_id} 的 profile 是否存在")
             
             # 檢查 profile 是否存在
             profile_result = self.supabase.table("profiles").select("id").eq("id", user_id).execute()
             
             if profile_result.data:
-                print(f"✅ 用戶 {user_id} 的 profile 已存在")
+                print(f"[OK] 用戶 {user_id} 的 profile 已存在")
                 return True
             
-            print(f"📝 用戶 {user_id} 的 profile 不存在，正在創建...")
+            print(f"[INFO] 用戶 {user_id} 的 profile 不存在，正在創建...")
             
             # 創建 profile 記錄
             try:
@@ -111,7 +111,7 @@ class DatabaseManager:
                             meta_data = user_data.get("raw_user_meta_data", {})
                             username = meta_data.get("name") or meta_data.get("full_name") or meta_data.get("user_name")
                 except Exception as auth_error:
-                    print(f"⚠️ 無法從 auth.users 獲取用戶資訊: {auth_error}")
+                    print(f"[WARN] 無法從 auth.users 獲取用戶資訊: {auth_error}")
                 
                 profile_data = {
                     "id": user_id,
@@ -122,18 +122,18 @@ class DatabaseManager:
                 create_result = self.supabase.table("profiles").insert(profile_data).execute()
                 
                 if create_result.data:
-                    print(f"✅ 成功創建用戶 {user_id} 的 profile")
+                    print(f"[OK] 成功創建用戶 {user_id} 的 profile")
                     return True
                 else:
-                    print(f"❌ 創建 profile 失敗: 無資料返回")
+                    print(f"[ERROR] 創建 profile 失敗: 無資料返回")
                     return False
                     
             except Exception as create_error:
-                print(f"❌ 創建 profile 時發生錯誤: {create_error}")
+                print(f"[ERROR] 創建 profile 時發生錯誤: {create_error}")
                 return False
                 
         except Exception as e:
-            print(f"❌ 檢查/創建用戶 profile 錯誤: {e}")
+            print(f"[ERROR] 檢查/創建用戶 profile 錯誤: {e}")
             return False
     
     def create_subscription(self, subscription_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
@@ -141,29 +141,29 @@ class DatabaseManager:
         try:
             user_id = subscription_data.get("user_id")
             if not user_id:
-                print("❌ 創建訂閱錯誤: 缺少 user_id")
+                print("[ERROR] 創建訂閱錯誤: 缺少 user_id")
                 return None
             
             # 確保用戶 profile 存在
             if not self.ensure_user_profile_exists(user_id):
-                print(f"❌ 無法確保用戶 {user_id} 的 profile 存在")
+                print(f"[ERROR] 無法確保用戶 {user_id} 的 profile 存在")
                 return None
             
-            print(f"📝 正在創建/更新訂閱: {subscription_data}")
+            print(f"[INFO] 正在創建/更新訂閱: {subscription_data}")
             result = self.supabase.table("subscriptions").upsert(subscription_data).execute()
             
             if result.data:
-                print(f"✅ 成功創建/更新訂閱")
+                print(f"[OK] 成功創建/更新訂閱")
                 return result.data[0]
             else:
-                print("❌ 創建訂閱失敗: 無資料返回")
+                print("[ERROR] 創建訂閱失敗: 無資料返回")
                 return None
                 
         except Exception as e:
-            print(f"❌ 創建訂閱錯誤: {e}")
-            print(f"❌ 錯誤類型: {type(e).__name__}")
+            print(f"[ERROR] 創建訂閱錯誤: {e}")
+            print(f"[ERROR] 錯誤類型: {type(e).__name__}")
             import traceback
-            print(f"❌ 詳細堆疊: {traceback.format_exc()}")
+            print(f"[ERROR] 詳細堆疊: {traceback.format_exc()}")
             return None
     
     def update_subscription(self, user_id: str, update_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
@@ -171,13 +171,13 @@ class DatabaseManager:
         try:
             # 確保用戶 profile 存在
             if not self.ensure_user_profile_exists(user_id):
-                print(f"❌ 無法確保用戶 {user_id} 的 profile 存在")
+                print(f"[ERROR] 無法確保用戶 {user_id} 的 profile 存在")
                 return None
             
             result = self.supabase.table("subscriptions").update(update_data).eq("user_id", user_id).execute()
             return result.data[0] if result.data else None
         except Exception as e:
-            print(f"❌ 更新訂閱錯誤: {e}")
+            print(f"[ERROR] 更新訂閱錯誤: {e}")
             return None
     
     def delete_subscription(self, user_id: str) -> bool:
@@ -186,7 +186,7 @@ class DatabaseManager:
             self.supabase.table("subscriptions").delete().eq("user_id", user_id).execute()
             return True
         except Exception as e:
-            print(f"❌ 刪除訂閱錯誤: {e}")
+            print(f"[ERROR] 刪除訂閱錯誤: {e}")
             return False
     
     def is_article_processed(self, url: str) -> bool:
@@ -195,17 +195,17 @@ class DatabaseManager:
             result = self.supabase.table('news_articles').select('id', count='exact').eq('original_url', url).execute()
             return result.count > 0
         except Exception as e:
-            print(f"❌ 檢查文章是否重複錯誤: {e}")
+            print(f"[ERROR] 檢查文章是否重複錯誤: {e}")
             return True  # 發生錯誤時，當作已處理以避免重複發送
     
     def save_new_article(self, article_data: Dict[str, Any]) -> Optional[int]:
         """將新處理的文章儲存到 Supabase"""
         try:
             result = self.supabase.table("news_articles").insert(article_data).execute()
-            print(f"✅ 儲存成功: {article_data['title']}")
+            print(f"[OK] 儲存成功: {article_data['title']}")
             return result.data[0]['id']
         except Exception as e:
-            print(f"❌ 儲存新文章時錯誤: {e}")
+            print(f"[ERROR] 儲存新文章時錯誤: {e}")
             return None
     
     def log_push_history(self, user_id: str, article_ids: List[int], batch_id: str = None) -> bool:
@@ -224,10 +224,10 @@ class DatabaseManager:
         
         try:
             self.supabase.table("push_history").insert(records).execute()
-            print(f"📝 已紀錄推播歷史 {len(article_ids)} 筆 (批次ID: {batch_id[:8]}...)")
+            print(f"[INFO] 已紀錄推播歷史 {len(article_ids)} 筆 (批次ID: {batch_id[:8]}...)")
             return True
         except Exception as e:
-            print(f"❌ 紀錄推播歷史失敗: {e}")
+            print(f"[ERROR] 紀錄推播歷史失敗: {e}")
             return False
     
     def get_push_history_by_user(self, user_id: str, limit: int = 50) -> List[Dict[str, Any]]:
@@ -238,7 +238,7 @@ class DatabaseManager:
             ).eq("user_id", user_id).order("pushed_at", desc=True).limit(limit).execute()
             return data.data
         except Exception as e:
-            print(f"❌ 讀取推送歷史錯誤: {e}")
+            print(f"[ERROR] 讀取推送歷史錯誤: {e}")
             return []
     
     def is_within_time_window(self, current_time: str, target_time: str, window_minutes: int) -> bool:
@@ -261,7 +261,7 @@ class DatabaseManager:
             
             return diff <= window_minutes
         except Exception as e:
-            print(f"❌ 時間窗口檢查錯誤: {e}")
+            print(f"[ERROR] 時間窗口檢查錯誤: {e}")
             return False
     
     def should_push_now(self, subscription: Dict[str, Any]) -> bool:
@@ -282,10 +282,10 @@ class DatabaseManager:
         current_window_key = f"{today}-{current_window}"
         
         if last_push_window == current_window_key:
-            print(f"⏳ 用戶 {subscription['user_id']} 在時間窗口 {current_window} 已推送過")
+            print(f"[INFO] 用戶 {subscription['user_id']} 在時間窗口 {current_window} 已推送過")
             return False
         
-        print(f"✅ 用戶 {subscription['user_id']} 可在時間窗口 {current_window} 推送 (台灣時間: {taiwan_time.strftime('%H:%M')})")
+        print(f"[OK] 用戶 {subscription['user_id']} 可在時間窗口 {current_window} 推送 (台灣時間: {taiwan_time.strftime('%H:%M')})")
         return True
     
     def get_current_time_window(self, current_time: str, frequency_type: str) -> Optional[str]:
@@ -324,10 +324,10 @@ class DatabaseManager:
                     "last_pushed_at": utc_now.isoformat()
                 }).eq("user_id", user_id).execute()
                 
-                print(f"✅ 標記推送窗口完成: {window_key} (台灣時間: {taiwan_time.strftime('%Y-%m-%d %H:%M:%S')})")
+                print(f"[OK] 標記推送窗口完成: {window_key} (台灣時間: {taiwan_time.strftime('%Y-%m-%d %H:%M:%S')})")
                 return True
         except Exception as e:
-            print(f"❌ 標記推送窗口錯誤: {e}")
+            print(f"[ERROR] 標記推送窗口錯誤: {e}")
         
         return False
     
@@ -340,8 +340,71 @@ class DatabaseManager:
             if self.should_push_now(subscription):
                 eligible.append(subscription)
         
-        print(f"📋 本輪符合推送條件的訂閱: {len(eligible)} 個")
+        print(f"[INFO] 本輪符合推送條件的訂閱: {len(eligible)} 個")
         return eligible
+    
+    def get_users_with_outdated_tags(self) -> List[Dict[str, Any]]:
+        """獲取需要更新標籤的用戶（關鍵字更新時間晚於標籤更新時間）"""
+        try:
+            print("[INFO] 檢查需要更新標籤的用戶...")
+            
+            # 查詢所有活躍用戶的時間戳
+            result = self.supabase.table('subscriptions').select(
+                'user_id, original_keywords, keywords_updated_at, tags_updated_at'
+            ).eq('is_active', True).execute()
+            
+            outdated_users = []
+            for user in result.data:
+                keywords_time = user.get('keywords_updated_at')
+                tags_time = user.get('tags_updated_at')
+                
+                # 如果關鍵字更新時間晚於標籤更新時間，需要更新
+                if keywords_time and tags_time and keywords_time > tags_time:
+                    outdated_users.append(user)
+                elif keywords_time and not tags_time:  # 新用戶，從未轉換過標籤
+                    outdated_users.append(user)
+            
+            print(f"[INFO] 發現 {len(outdated_users)} 個用戶需要更新標籤")
+            return outdated_users
+            
+        except Exception as e:
+            print(f"[ERROR] 檢查用戶失敗: {e}")
+            return []
+    
+    def update_user_subscribed_tags(self, user_id: str, tags: List[str]) -> bool:
+        """更新用戶的訂閱標籤"""
+        try:
+            update_data = {
+                'subscribed_tags': tags,
+                'tags_updated_at': get_current_utc_time().isoformat()
+            }
+            
+            result = self.supabase.table('subscriptions').update(
+                update_data
+            ).eq('user_id', user_id).execute()
+            
+            return len(result.data) > 0
+            
+        except Exception as e:
+            print(f"[ERROR] 更新用戶 {user_id} 標籤失敗: {e}")
+            return False
+    
+    def mark_keywords_as_updated(self, user_id: str) -> bool:
+        """標記用戶關鍵字為已更新（當用戶修改關鍵字時調用）"""
+        try:
+            update_data = {
+                'keywords_updated_at': get_current_utc_time().isoformat()
+            }
+            
+            result = self.supabase.table('subscriptions').update(
+                update_data
+            ).eq('user_id', user_id).execute()
+            
+            return len(result.data) > 0
+            
+        except Exception as e:
+            print(f"[ERROR] 標記用戶 {user_id} 關鍵字更新失敗: {e}")
+            return False
 
 # Create a global database manager instance
 db_manager = DatabaseManager() 

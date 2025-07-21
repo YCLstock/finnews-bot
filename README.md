@@ -70,29 +70,60 @@ finnews-bot/
 └── 🧪 test_batch_push.py      # 功能測試腳本
 ```
 
+## ⚡ **快速開始 (AWS Lambda 已部署)**
+
+**系統已部署至AWS並自動運行！** 🎉
+
+### 當前部署狀態
+- ✅ **爬蟲**: 每4小時自動爬取新聞 (已運行)
+- ✅ **推送**: 每10分鐘檢查用戶訂閱 (已運行)
+- ✅ **監控**: CloudWatch 自動日誌記錄
+- ✅ **環境**: Supabase + OpenAI 已配置
+
+### 立即使用
+1. **查看執行狀態**: [AWS Console](https://ap-southeast-1.console.aws.amazon.com/lambda/home?region=ap-southeast-1#/functions)
+2. **監控日誌**: CloudWatch > 日誌群組 > `/aws/lambda/finnews-bot-*`
+3. **測試功能**: 執行本地測試 `python test_lambda_simple.py`
+
+### 維護指令
+```bash
+# 查看函數狀態
+aws lambda get-function --function-name finnews-bot-crawler --region ap-southeast-1
+
+# 查看最新執行日誌
+aws logs tail /aws/lambda/finnews-bot-crawler --follow
+
+# 手動觸發測試
+aws lambda invoke --function-name finnews-bot-crawler --payload '{}' response.json
+```
+
+---
+
 ## 🔧 **環境設定**
 
-### 1. **環境變數配置**
+### 1. **環境變數配置** (已完成 ✅)
 
-創建 `.env` 文件：
+AWS Lambda 環境變數已設定：
 
 ```env
-# Supabase 資料庫
+# Supabase 資料庫 ✅
+SUPABASE_URL=https://gbobozzqoqfhqmttwzwn.supabase.co
+SUPABASE_SERVICE_KEY=已設定
+
+# OpenAI API ✅
+OPENAI_API_KEY=已設定
+
+# 爬蟲配置 ✅
+CRAWLER_LIMIT=10
+
+# 本地開發用 .env 文件：
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_KEY=your-service-key
 SUPABASE_JWT_SECRET=your-jwt-secret
-
-# OpenAI API
 OPENAI_API_KEY=sk-your-openai-key
-
-# Yahoo Finance 新聞源
 YAHOO_FINANCE_URL=https://finance.yahoo.com/topic/stock-market-news
-
-# 爬蟲配置
 SCRAPER_TIMEOUT=30
 SCRAPER_USER_AGENT=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
-
-# FastAPI 配置
 API_HOST=0.0.0.0
 API_PORT=8000
 ```
@@ -305,15 +336,111 @@ success, failed = send_batch_to_discord(webhook_url, test_articles)
 
 ## 🚀 **部署指南**
 
-### 1. **Render 部署** (推薦)
+### 1. **AWS Lambda 部署** (已完成 ✅)
 
-1. Fork 此專案到您的 GitHub
-2. 在 Render 建立新的 Web Service
-3. 連接您的 GitHub 專案
-4. 設定環境變數
-5. 設定 Cron Job 用於定時爬蟲
+#### 部署狀態
+- ✅ **爬蟲Lambda**: `finnews-bot-crawler` (ap-southeast-1)
+- ✅ **推送Lambda**: `finnews-bot-pusher` (ap-southeast-1)  
+- ✅ **環境變數**: Supabase + OpenAI 配置完成
+- ✅ **自動排程**: EventBridge 定時觸發
 
-### 2. **本地開發**
+#### 執行排程
+- **爬蟲函數**: 每天 00:00, 04:00, 08:00, 12:00, 16:00, 20:00 (UTC時間)
+- **推送函數**: 每10分鐘檢查用戶訂閱並推送
+
+#### 部署配置
+```yaml
+爬蟲Lambda:
+  記憶體: 512MB
+  超時: 300秒
+  觸發: EventBridge (每4小時)
+  
+推送Lambda:  
+  記憶體: 256MB
+  超時: 180秒
+  觸發: EventBridge (每10分鐘)
+```
+
+### 2. **AWS 後續維護**
+
+#### 監控與日誌
+```bash
+# 查看函數狀態
+aws lambda get-function --function-name finnews-bot-crawler --region ap-southeast-1
+
+# 查看最新日誌
+aws logs tail /aws/lambda/finnews-bot-crawler --follow --region ap-southeast-1
+aws logs tail /aws/lambda/finnews-bot-pusher --follow --region ap-southeast-1
+
+# 手動測試執行
+aws lambda invoke --function-name finnews-bot-crawler --payload '{}' response.json --region ap-southeast-1
+```
+
+#### 程式碼更新流程
+```bash
+# 1. 修改程式碼後，重新部署
+cd aws/deploy
+./deploy.bat  # Windows
+# 或
+./deploy.sh   # Linux/Mac
+
+# 2. 或僅更新函數代碼
+aws lambda update-function-code \
+    --function-name finnews-bot-crawler \
+    --zip-file fileb://crawler-deployment.zip \
+    --region ap-southeast-1
+```
+
+#### 環境變數更新
+```bash
+# 更新爬蟲環境變數
+aws lambda update-function-configuration \
+    --function-name finnews-bot-crawler \
+    --environment Variables='{"SUPABASE_URL":"新值","OPENAI_API_KEY":"新值"}' \
+    --region ap-southeast-1
+```
+
+#### 排程調整
+```bash
+# 修改爬蟲執行頻率 (例改為每2小時)
+aws events put-rule \
+    --name finnews-crawler-schedule \
+    --schedule-expression "rate(2 hours)" \
+    --region ap-southeast-1
+
+# 或指定固定時間 (每天6次)
+aws events put-rule \
+    --name finnews-crawler-schedule \
+    --schedule-expression "cron(0 0,4,8,12,16,20 * * ? *)" \
+    --region ap-southeast-1
+```
+
+### 3. **故障排除**
+
+#### 常見問題
+```bash
+# 函數超時 - 增加超時時間
+aws lambda update-function-configuration \
+    --function-name finnews-bot-crawler \
+    --timeout 600 \
+    --region ap-southeast-1
+
+# 記憶體不足 - 增加記憶體
+aws lambda update-function-configuration \
+    --function-name finnews-bot-crawler \
+    --memory-size 1024 \
+    --region ap-southeast-1
+
+# 檢查權限問題
+aws iam get-role --role-name finnews-lambda-role
+```
+
+#### 監控指標
+- **AWS Console**: Lambda > 函數 > 監控
+- **CloudWatch**: 自動建立日誌群組
+- **EventBridge**: 規則執行狀態
+
+### 4. **本地開發**
 
 ```bash
 # 克隆專案
@@ -331,11 +458,23 @@ pip install -r requirements.txt
 cp .env.example .env
 # 編輯 .env 填入您的設定
 
-# 啟動服務
+# 本地測試Lambda函數
+python test_lambda_simple.py
+
+# 啟動API服務 (如需要)
 uvicorn api.main:app --reload
 ```
 
 ## 🆕 **版本更新**
+
+### v2.1 (2025-01-20) - AWS Lambda 部署版本
+- ✅ **AWS Lambda 部署**: 完整的Serverless架構遷移
+- ✅ **雙函數設計**: 爬蟲函數 + 推送函數分離
+- ✅ **EventBridge 排程**: 自動化定時執行
+- ✅ **環境變數管理**: 安全的配置管理
+- ✅ **CloudWatch 監控**: 完整的日誌和監控
+- ✅ **部署自動化**: 一鍵部署腳本
+- ✅ **故障排除指南**: 完整的維護文檔
 
 ### v2.0 (2024-12-xx)
 - ✅ 推送頻率簡化 (daily/twice/thrice)

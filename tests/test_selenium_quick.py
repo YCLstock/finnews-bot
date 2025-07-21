@@ -8,8 +8,13 @@ import sys
 import os
 from pathlib import Path
 
+# 設置編碼
+if sys.platform == "win32":
+    import codecs
+    sys.stdout = codecs.getwriter("utf-8")(sys.stdout.detach())
+
 # 添加項目根目錄到 Python 路徑
-project_root = Path(__file__).parent
+project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 def test_chrome_basic():

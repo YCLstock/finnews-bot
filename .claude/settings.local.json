@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(aws lambda publish-layer-version:*)",
+      "Bash(aws lambda update-function-configuration:*)",
+      "Bash(mkdir:*)",
+      "Bash(cp:*)",
+      "Bash(powershell:*)",
+      "Bash(ls:*)",
+      "Bash(wsl:*)",
+      "Bash(aws lambda update-function-code:*)",
+      "Bash(aws lambda invoke:*)",
+      "Bash(rm:*)",
+      "Bash(python -m py_compile:*)",
+      "Bash(python:*)",
+      "Bash(pip install:*)"
+    ],
+    "deny": []
+  }
+}

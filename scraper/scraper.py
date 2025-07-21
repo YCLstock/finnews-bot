@@ -34,7 +34,7 @@ class NewsScraperManager:
         if url is None:
             url = settings.YAHOO_FINANCE_URL
         
-        print(f"📰 正在從 {url} 爬取新聞列表...")
+        print(f"News: 正在從 {url} 爬取新聞列表...")
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36'
         }
@@ -59,10 +59,10 @@ class NewsScraperManager:
                             'link': link
                         })
             
-            print(f"👍 成功爬取到 {len(result)} 則新聞標題。")
+            print(f"OK: 成功爬取到 {len(result)} 則新聞標題。")
             return result
         except Exception as e:
-            print(f"❌ 爬取新聞列表失敗: {e}")
+            print(f"Error: 爬取新聞列表失敗: {e}")
             return []
     
     def scrape_article_content(self, url: str) -> Union[str, None]:
@@ -71,7 +71,7 @@ class NewsScraperManager:
         - 強化偽裝以應對反爬蟲機制
         - 使用複合選擇器以應對多種頁面版面
         """
-        print(f"🦾 [Selenium] 正在啟動瀏覽器抓取完整 URL: {url}")
+        print(f"Selenium: [Selenium] 正在啟動瀏覽器抓取完整 URL: {url}")
         
         # 導入必要模組
         import os
@@ -127,12 +127,12 @@ class NewsScraperManager:
         driver = None
         try:
             # 使用Selenium 4.6+內建的driver管理（不需要webdriver-manager）
-            print("🤖 使用Selenium內建ChromeDriver管理...")
+            print("Using Selenium built-in ChromeDriver management...")
             
             # Selenium會自動下載適合的ChromeDriver版本
             # 不需要手動指定Service路徑
             driver = webdriver.Chrome(options=chrome_options)
-            print("✅ Chrome瀏覽器啟動成功（Selenium自動管理驅動）")
+            print("Success: Chrome瀏覽器啟動成功（Selenium自動管理驅動）")
             
             driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument', {
                 'source': "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
@@ -145,9 +145,9 @@ class NewsScraperManager:
                 import psutil
                 process = psutil.Process()
                 memory_before = process.memory_info().rss / 1024 / 1024  # MB
-                print(f"💾 瀏覽器啟動前記憶體: {memory_before:.1f} MB")
+                print(f"Memory: 瀏覽器啟動前記憶體: {memory_before:.1f} MB")
             except ImportError:
-                print("💾 psutil未安裝，跳過記憶體監控")
+                print("Memory: psutil未安裝，跳過記憶體監控")
             
             print("正在訪問頁面...")
             driver.get(url)
@@ -155,9 +155,9 @@ class NewsScraperManager:
             # 檢查瀏覽器是否仍然活著
             try:
                 current_url = driver.current_url
-                print(f"✅ 頁面載入成功: {current_url[:60]}...")
+                print(f"Success: 頁面載入成功: {current_url[:60]}...")
             except Exception as e:
-                print(f"⚠️ 頁面載入後檢查失敗: {e}")
+                print(f"Warning: 頁面載入後檢查失敗: {e}")
                 return None
 
             # 處理同意視窗
@@ -166,19 +166,19 @@ class NewsScraperManager:
                 consent_button = WebDriverWait(driver, 10).until(
                     EC.element_to_be_clickable(consent_button_locator)
                 )
-                print("🍪 發現同意按鈕，正在點擊...")
+                print("Cookie: 發現同意按鈕，正在點擊...")
                 driver.execute_script("arguments[0].click();", consent_button)
                 time.sleep(random.uniform(1, 2))
             except TimeoutException:
-                print("👍 未在10秒內發現或不需點擊同意按鈕，繼續執行。")
+                print("OK: 未在10秒內發現或不需點擊同意按鈕，繼續執行。")
 
             # 等待並抓取主要內容
-            print("⏳ 正在等待文章主要內容容器...")
+            print("Waiting: 正在等待文章主要內容容器...")
             content_container_locator = (By.CSS_SELECTOR, '[data-testid="article-content-wrapper"], div.caas-body, div.atoms-wrapper, div.article-wrap.no-bb')
             WebDriverWait(driver, 20).until(
                 EC.presence_of_element_located(content_container_locator)
             )
-            print("✅ 內容容器已載入。")
+            print("Success: 內容容器已載入。")
             
             soup = BeautifulSoup(driver.page_source, "html.parser")
             body = soup.select_one('[data-testid="article-content-wrapper"], div.caas-body, div.atoms-wrapper, div.article-wrap.no-bb')
@@ -186,43 +186,43 @@ class NewsScraperManager:
             if body:
                 paragraphs = body.find_all("p")
                 if not paragraphs:
-                    print(f"⚠️ 找到容器 {body.get('class')}，但裡面沒有 <p> 標籤。")
+                    print(f"Warning: 找到容器 {body.get('class')}，但裡面沒有 <p> 標籤。")
                     return None
                 
                 content_text = "\n".join(p.get_text(strip=True) for p in paragraphs if p.get_text(strip=True))
                 
                 if content_text:
-                    print(f"✅ 成功擷取文章內文，約 {len(content_text)} 字。")
+                    print(f"Success: 成功擷取文章內文，約 {len(content_text)} 字。")
                     return content_text
                 else:
-                    print("⚠️ 找到 <p> 標籤，但沒有有效文字內容。")
+                    print("Warning: 找到 <p> 標籤，但沒有有效文字內容。")
                     return None
             
-            print("❌ 未能找到任何已知的內容容器 (data-testid, caas-body, atoms-wrapper, article-wrap)。")
+            print("Error: 未能找到任何已知的內容容器 (data-testid, caas-body, atoms-wrapper, article-wrap)。")
             return None
 
         except TimeoutException as e:
-            print(f"❌ 擷取內文時頁面加載或元素等待超時。錯誤訊息: {e.msg}")
+            print(f"Error: 擷取內文時頁面加載或元素等待超時。錯誤訊息: {e.msg}")
             screenshot_path = self.debug_folder / f"TIMEOUT_FAIL_{url.split('/')[-1].replace('.html', '')}.png"
             if driver: 
                 driver.save_screenshot(str(screenshot_path))
-            print(f"📸 錯誤畫面已截圖: {screenshot_path}")
+            print(f"Screenshot: 錯誤畫面已截圖: {screenshot_path}")
             return None
         except Exception as e:
-            print(f"❌ 擷取內文時發生未預期錯誤: {e}")
+            print(f"Error: 擷取內文時發生未預期錯誤: {e}")
             screenshot_path = self.debug_folder / f"GENERAL_FAIL_{url.split('/')[-1].replace('.html', '')}.png"
             if driver: 
                 driver.save_screenshot(str(screenshot_path))
-            print(f"📸 錯誤畫面已截圖: {screenshot_path}")
+            print(f"Screenshot: 錯誤畫面已截圖: {screenshot_path}")
             return None
         finally:
             if driver:
                 try:
                     # 強制清理瀏覽器資源
                     driver.quit()
-                    print("🧹 瀏覽器已關閉。")
+                    print("Cleanup: 瀏覽器已關閉。")
                 except Exception as cleanup_error:
-                    print(f"⚠️ 瀏覽器清理時發生錯誤: {cleanup_error}")
+                    print(f"Warning: 瀏覽器清理時發生錯誤: {cleanup_error}")
                     
                 # 額外清理：強制垃圾回收
                 import gc
@@ -233,38 +233,147 @@ class NewsScraperManager:
                     import psutil
                     process = psutil.Process()
                     memory_after = process.memory_info().rss / 1024 / 1024  # MB
-                    print(f"💾 清理後記憶體: {memory_after:.1f} MB")
+                    print(f"Memory: 清理後記憶體: {memory_after:.1f} MB")
                 except ImportError:
                     pass
+    
+    def generate_summary_and_tags(self, title: str, content: str) -> tuple:
+        """同時生成摘要和AI標籤，節省token使用"""
+        import os
+        import json
+        import requests
+        
+        api_key = os.environ.get('OPENAI_API_KEY')
+        if not api_key:
+            print("Missing OpenAI API key, using fallback")
+            return f"Summary generation failed. Title: {title}", self._generate_fallback_tags(title, content)
+        
+        # 核心標籤庫
+        core_tags = ["APPLE", "TSMC", "TESLA", "AI_TECH", "CRYPTO"]
+        
+        prompt = f"""
+請為以下財經新聞同時完成兩個任務：
+
+新聞標題：{title}
+新聞內容：{content[:1500]}
+
+任務1 - 生成摘要：
+- 使用繁體中文
+- 80-120字之間
+- 客觀中立，突出關鍵資訊
+- 適合投資人快速閱讀
+
+任務2 - 分配標籤：
+從以下標籤庫選擇最相關的（最多3個）：
+- APPLE: 蘋果公司 (iPhone, Mac, AAPL股票)
+- TSMC: 台積電 (半導體, 晶圓代工)  
+- TESLA: 特斯拉 (電動車, 馬斯克)
+- AI_TECH: AI科技 (人工智慧, AI晶片)
+- CRYPTO: 加密貨幣 (比特幣, 區塊鏈)
+
+請返回JSON格式：
+{{
+  "summary": "這裡是摘要內容...",
+  "tags": ["TAG1", "TAG2"],
+  "confidence": 0.95
+}}
+"""
+        
+        headers = {
+            'Authorization': f'Bearer {api_key}',
+            'Content-Type': 'application/json'
+        }
+        
+        data = {
+            'model': 'gpt-3.5-turbo',
+            'messages': [{'role': 'user', 'content': prompt}],
+            'max_tokens': 300,
+            'temperature': 0.2
+        }
+        
+        try:
+            print("Generating summary and tags with AI...")
+            response = requests.post('https://api.openai.com/v1/chat/completions', 
+                                   headers=headers, json=data, timeout=30)
+            
+            if response.status_code == 200:
+                result = response.json()
+                content_result = result['choices'][0]['message']['content']
+                
+                try:
+                    parsed = json.loads(content_result)
+                    summary = parsed.get('summary', f"摘要解析失敗。原標題：{title}")
+                    tags = parsed.get('tags', [])
+                    confidence = parsed.get('confidence', 0)
+                    
+                    if confidence > 0.7:
+                        print(f"AI processing successful: Summary({len(summary)} chars) + Tags{tags}")
+                        return summary, tags
+                    else:
+                        print(f"Low confidence({confidence}), using fallback")
+                        return summary, self._generate_fallback_tags(title, content)
+                        
+                except json.JSONDecodeError as e:
+                    print(f"JSON parsing failed: {e}")
+                    return f"Summary parsing failed. Title: {title}", self._generate_fallback_tags(title, content)
+            else:
+                print(f"OpenAI API error: {response.status_code}")
+                return f"API error. Title: {title}", self._generate_fallback_tags(title, content)
+                
+        except Exception as e:
+            print(f"Summary and tags generation failed: {e}")
+            return f"Processing failed. Title: {title}", self._generate_fallback_tags(title, content)
+    
+    def _generate_fallback_tags(self, title: str, content: str) -> list:
+        """備用規則式標籤生成"""
+        text = f"{title} {content}".lower()
+        tags = []
+        
+        # 規則式匹配
+        tag_keywords = {
+            "APPLE": ["apple", "iphone", "mac", "aapl", "蘋果", "庫克"],
+            "TSMC": ["tsmc", "taiwan semiconductor", "台積電", "晶圓", "半導體", "2330"],
+            "TESLA": ["tesla", "tsla", "musk", "特斯拉", "馬斯克", "電動車"],
+            "AI_TECH": ["ai", "artificial intelligence", "chatgpt", "openai", "人工智慧", "機器學習", "ai晶片"],
+            "CRYPTO": ["bitcoin", "cryptocurrency", "blockchain", "比特幣", "加密貨幣", "區塊鏈", "btc"]
+        }
+        
+        for tag, keywords in tag_keywords.items():
+            if any(keyword in text for keyword in keywords):
+                tags.append(tag)
+        
+        result_tags = tags[:3]  # 最多3個標籤
+        print(f"Fallback tags generated: {result_tags}")
+        return result_tags
     
     def process_news_for_subscriptions(self) -> bool:
         """
         主執行函式 - 處理所有訂閱的新聞（批量版本）
         根據新的推送頻率和批量處理需求優化
         """
-        print("🚀 開始執行智能新聞處理任務...")
+        print("Starting intelligent news processing task...")
         
         # 獲取符合推送條件的訂閱
         eligible_subscriptions = db_manager.get_eligible_subscriptions()
         if not eligible_subscriptions:
-            print("🟡 目前沒有符合推送時間的訂閱任務，程式結束。")
+            print("No subscriptions eligible for current push time, exiting.")
             return False
 
         # 爬取新聞列表
         news_list = self.scrape_yahoo_finance_list()
         if not news_list:
-            print("🟡 未能從 Yahoo Finance 爬取到任何新聞，程式結束。")
+            print("Could not fetch any news from Yahoo Finance, exiting.")
             return False
 
         # 處理每個符合條件的訂閱
         overall_success = False
         for subscription in eligible_subscriptions:
-            print(f"\n--- ⚙️ 開始處理使用者 {subscription['user_id']} 的訂閱 ---")
+            print(f"\n--- Processing 開始處理使用者 {subscription['user_id']} 的訂閱 ---")
             success = self._process_subscription_batch(subscription, news_list)
             if success:
                 overall_success = True
 
-        print(f"\n✅ 所有符合條件的訂閱任務處理完畢。")
+        print(f"\nSuccess: 所有符合條件的訂閱任務處理完畢。")
         return overall_success
     
     def _process_subscription_batch(self, subscription: Dict[str, Any], news_list: List[Dict[str, str]]) -> bool:
@@ -274,7 +383,7 @@ class NewsScraperManager:
         keywords = subscription.get("keywords", [])
         max_articles = db_manager.get_max_articles_for_frequency(frequency_type)
         
-        print(f"🔍 為用戶 {user_id} 收集符合條件的新聞 (最多 {max_articles} 則)")
+        print(f"Checking: 為用戶 {user_id} 收集符合條件的新聞 (最多 {max_articles} 則)")
         
         # 收集符合條件的新聞
         collected_articles = []
@@ -284,7 +393,7 @@ class NewsScraperManager:
         for news_item in news_list:
             # 檢查是否已達到最大數量
             if len(collected_articles) >= max_articles:
-                print(f"📊 已收集到 {max_articles} 則新聞，停止收集")
+                print(f"Stats: 已收集到 {max_articles} 則新聞，停止收集")
                 break
             
             # 檢查是否已處理
@@ -295,34 +404,34 @@ class NewsScraperManager:
             if keywords and not any(keyword.lower() in news_item['title'].lower() for keyword in keywords):
                 continue
             
-            print(f"👉 找到符合關鍵字的文章: {news_item['title'][:60]}...")
+            print(f"Found: 找到符合關鍵字的文章: {news_item['title'][:60]}...")
             processed_count += 1
             
             # 嘗試處理文章
             article_data = self._process_single_article(news_item)
             if article_data:
                 collected_articles.append(article_data)
-                print(f"✅ 文章處理成功 ({len(collected_articles)}/{max_articles})")
+                print(f"Success: 文章處理成功 ({len(collected_articles)}/{max_articles})")
             else:
                 failed_count += 1
-                print(f"❌ 文章處理失敗")
+                print(f"Error: 文章處理失敗")
                 
             # 如果已收集足夠的文章，提前結束
             if len(collected_articles) >= max_articles:
                 break
         
         # 推送結果統計
-        print(f"\n📊 收集結果統計:")
+        print(f"\nStats: 收集結果統計:")
         print(f"  - 嘗試處理: {processed_count} 篇")
         print(f"  - 成功收集: {len(collected_articles)} 篇")
         print(f"  - 處理失敗: {failed_count} 篇")
         
         if not collected_articles:
-            print(f"ℹ️ 未找到適合用戶 {user_id} 的新文章")
+            print(f"[INFO] No suitable articles found for user {user_id}")
             return False
         
         # 批量推送到 Discord
-        print(f"\n📤 開始推送 {len(collected_articles)} 則新聞到 Discord...")
+        print(f"\nSending: 開始推送 {len(collected_articles)} 則新聞到 Discord...")
         success, failed_articles = send_batch_to_discord(
             subscription['delivery_target'], 
             collected_articles, 
@@ -343,7 +452,7 @@ class NewsScraperManager:
                 # 記錄推送歷史（批量記錄）
                 batch_success = db_manager.log_push_history(user_id, article_ids)
                 if batch_success:
-                    print(f"📝 已記錄推送歷史: {len(article_ids)} 篇文章")
+                    print(f"Logging 已記錄推送歷史: {len(article_ids)} 篇文章")
                 
                 # 標記推送窗口為已完成
                 db_manager.mark_push_window_completed(user_id, frequency_type)
@@ -356,10 +465,10 @@ class NewsScraperManager:
                     frequency_type
                 )
                 
-                print(f"🎉 用戶 {user_id} 的推送任務完成: {len(successful_articles)} 則成功")
+                print(f"Completed: 用戶 {user_id} 的推送任務完成: {len(successful_articles)} 則成功")
                 return True
         
-        print(f"❌ 用戶 {user_id} 的推送任務失敗")
+        print(f"Error: 用戶 {user_id} 的推送任務失敗")
         return False
     
     def _process_single_article(self, news_item: Dict[str, str]) -> Union[Dict[str, Any], None]:
@@ -370,8 +479,8 @@ class NewsScraperManager:
             if not content:
                 return None
 
-            # 生成摘要
-            summary = generate_summary_optimized(content)
+            # 同時生成摘要和AI標籤（節省token）
+            summary, tags = self.generate_summary_and_tags(news_item['title'], content)
             if "[摘要生成失敗" in summary:
                 return None
 
@@ -384,13 +493,14 @@ class NewsScraperManager:
                 'source': 'yahoo_finance', 
                 'title': news_item['title'], 
                 'summary': summary,
+                'tags': tags,  # 新增AI標籤
                 'published_at': published_at.isoformat()  # 轉換為 ISO 格式字符串
             }
             
             return article_data
             
         except Exception as e:
-            print(f"❌ 處理文章時發生錯誤: {e}")
+            print(f"Error: 處理文章時發生錯誤: {e}")
             return None
 
 # Create a global scraper manager instance

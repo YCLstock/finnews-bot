@@ -7,6 +7,11 @@ import os
 import sys
 from pathlib import Path
 
+# 設置編碼（Windows本地測試需要）
+if sys.platform == "win32":
+    import codecs
+    sys.stdout = codecs.getwriter("utf-8")(sys.stdout.detach())
+
 # 添加專案根目錄到路徑
 sys.path.append(str(Path(__file__).parent.parent.parent))
 

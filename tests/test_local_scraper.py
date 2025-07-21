@@ -15,7 +15,7 @@ if sys.platform == "win32":
     sys.stdout = codecs.getwriter("utf-8")(sys.stdout.detach())
 
 # 添加項目根目錄到 Python 路徑
-project_root = Path(__file__).parent
+project_root = Path(__file__).parent.parent  # 回到專案根目錄
 sys.path.insert(0, str(project_root))
 
 def test_scraper_step_by_step():

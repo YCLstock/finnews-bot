@@ -162,6 +162,7 @@ async def create_or_update_subscription(
             "delivery_platform": subscription_data.delivery_platform,
             "delivery_target": subscription_data.delivery_target,
             "keywords": subscription_data.keywords,
+            "original_keywords": subscription_data.keywords,  # 新增：儲存原始關鍵字
             "news_sources": subscription_data.news_sources,
             "summary_language": subscription_data.summary_language,
             "push_frequency_type": subscription_data.push_frequency_type,
@@ -175,7 +176,11 @@ async def create_or_update_subscription(
                 detail="Failed to create subscription"
             )
         
+        # 標記關鍵字為已更新（觸發後續AI標籤轉換）
+        db_manager.mark_keywords_as_updated(current_user_id)
+        
         print(f"✅ 成功創建/更新用戶 {current_user_id} 的訂閱")
+        print(f"📝 關鍵字已標記為待轉換，將在下次定時任務中處理")
         return result
         
     except HTTPException:
@@ -231,9 +236,15 @@ async def update_subscription(
     
     # 準備更新資料（只包含非 None 的欄位）
     update_dict = {}
+    keywords_updated = False
+    
     for field, value in update_data.dict().items():
         if value is not None:
             update_dict[field] = value
+            # 如果更新了關鍵字，同時更新original_keywords
+            if field == "keywords":
+                update_dict["original_keywords"] = value
+                keywords_updated = True
     
     if not update_dict:
         raise HTTPException(
@@ -247,6 +258,11 @@ async def update_subscription(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to update subscription"
         )
+    
+    # 如果更新了關鍵字，標記為待轉換
+    if keywords_updated:
+        db_manager.mark_keywords_as_updated(current_user_id)
+        print(f"📝 用戶 {current_user_id} 關鍵字已更新並標記為待轉換")
     
     return result
 
