@@ -30,13 +30,13 @@ class JWTVerifier:
             # 檢查是否是 base64 格式
             if len(secret) % 4 == 0 and secret.replace('+', '').replace('/', '').replace('=', '').isalnum():
                 decoded = base64.b64decode(secret)
-                print("🔑 使用 base64 解碼的 JWT Secret")
+                print("KEY: Using base64 decoded JWT Secret")
                 return decoded
         except Exception:
             pass
         
         # 直接使用原始字符串
-        print("🔑 使用原始字符串 JWT Secret")
+        print("KEY: Using raw string JWT Secret")
         return secret.encode('utf-8')
         
     def _generate_cache_key(self, token: str) -> str:

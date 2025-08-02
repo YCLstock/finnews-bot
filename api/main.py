@@ -6,25 +6,25 @@ from contextlib import asynccontextmanager
 import traceback
 
 from core.config import settings
-from api.endpoints import subscriptions, history
+from api.endpoints import subscriptions, history, guidance
 from api.auth import jwt_verifier
 
 # 驗證環境變數
 try:
     settings.validate()
-    print("✅ 環境變數驗證成功")
+    print("OK: 環境變數驗證成功")
 except ValueError as e:
-    print(f"❌ 環境變數驗證失敗: {e}")
+    print(f"ERROR: 環境變數驗證失敗: {e}")
     raise
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """應用程式生命週期管理"""
     # 啟動時執行
-    print("🚀 FinNews-Bot API 啟動中...")
+    print("START: FinNews-Bot API 啟動中...")
     yield
     # 關閉時執行
-    print("🛑 FinNews-Bot API 關閉中...")
+    print("STOP: FinNews-Bot API 關閉中...")
 
 # 創建 FastAPI 應用程式
 app = FastAPI(
@@ -55,19 +55,19 @@ app.add_middleware(
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     """處理 422 驗證錯誤並提供詳細信息"""
-    print(f"❌ 422 驗證錯誤詳情:")
-    print(f"❌ 請求 URL: {request.url}")
-    print(f"❌ 請求方法: {request.method}")
+    print(f"ERROR: 422 驗證錯誤詳情:")
+    print(f"ERROR: 請求 URL: {request.url}")
+    print(f"ERROR: 請求方法: {request.method}")
     
     # 嘗試讀取請求體
     try:
         body = await request.body()
-        print(f"❌ 請求體: {body.decode('utf-8')}")
+        print(f"ERROR: 請求體: {body.decode('utf-8')}")
     except Exception as e:
-        print(f"❌ 無法讀取請求體: {e}")
+        print(f"ERROR: 無法讀取請求體: {e}")
     
-    print(f"❌ 驗證錯誤: {exc.errors()}")
-    print(f"❌ 詳細堆疊: {traceback.format_exc()}")
+    print(f"ERROR: 驗證錯誤: {exc.errors()}")
+    print(f"ERROR: 詳細堆疊: {traceback.format_exc()}")
     
     # 處理錯誤信息，確保能夠 JSON 序列化
     error_details = []
@@ -91,6 +91,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 # 註冊路由
 app.include_router(subscriptions.router, prefix="/api/v1")
 app.include_router(history.router, prefix="/api/v1")
+app.include_router(guidance.router, prefix="/api/v1")
 
 @app.get("/")
 async def root():

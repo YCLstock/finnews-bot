@@ -1,9 +1,14 @@
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timezone, timedelta
 import uuid
+import logging
 from supabase import create_client, Client
 from core.config import settings
 from core.utils import get_current_taiwan_time, get_current_utc_time, utc_to_taiwan_time
+
+# 設置日誌
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class DatabaseManager:
     """Database operations manager for FinNews-Bot"""
@@ -404,6 +409,199 @@ class DatabaseManager:
             
         except Exception as e:
             print(f"[ERROR] 標記用戶 {user_id} 關鍵字更新失敗: {e}")
+            return False
+
+    # ====== 用戶引導與聚類相關方法 ======
+    
+    def save_user_guidance_history(self, user_id: str, guidance_type: str, 
+                                 original_keywords: List[str], suggested_keywords: List[str],
+                                 user_choice: str, guidance_result: Dict[str, Any]) -> bool:
+        """保存用戶引導歷史記錄"""
+        try:
+            guidance_data = {
+                'user_id': user_id,
+                'guidance_type': guidance_type,
+                'original_keywords': original_keywords,
+                'suggested_keywords': suggested_keywords,
+                'user_choice': user_choice,
+                'guidance_result': guidance_result,
+                'created_at': datetime.now(timezone.utc).isoformat()
+            }
+            
+            result = self.supabase.table('user_guidance_history').insert(guidance_data).execute()
+            logger.info(f"Saved guidance history for user {user_id}")
+            return len(result.data) > 0
+            
+        except Exception as e:
+            logger.error(f"Failed to save guidance history for user {user_id}: {e}")
+            return False
+    
+    def save_keyword_clustering_result(self, user_id: str, original_keywords: List[str],
+                                     clustered_keywords: List[List[str]], cluster_confidence: float,
+                                     primary_topics: List[str], cluster_method: str) -> bool:
+        """保存關鍵字聚類結果"""
+        try:
+            cluster_data = {
+                'user_id': user_id,
+                'original_keywords': original_keywords,
+                'clustered_keywords': clustered_keywords,
+                'cluster_confidence': cluster_confidence,
+                'primary_topics': primary_topics,
+                'cluster_method': cluster_method,
+                'is_active': True,
+                'created_at': datetime.now(timezone.utc).isoformat(),
+                'updated_at': datetime.now(timezone.utc).isoformat()
+            }
+            
+            result = self.supabase.table('keyword_clusters').insert(cluster_data).execute()
+            logger.info(f"Saved clustering result for user {user_id}")
+            return len(result.data) > 0
+            
+        except Exception as e:
+            logger.error(f"Failed to save clustering result for user {user_id}: {e}")
+            return False
+    
+    def get_user_preferences(self, user_id: str) -> Optional[Dict[str, Any]]:
+        """獲取用戶偏好設定"""
+        try:
+            result = self.supabase.table('user_preferences').select('*').eq('user_id', user_id).execute()
+            
+            if result.data:
+                return result.data[0]
+            return None
+            
+        except Exception as e:
+            logger.error(f"Failed to get user preferences for {user_id}: {e}")
+            return None
+    
+    def update_user_preferences(self, user_id: str, focus_score: float, 
+                              primary_topics: List[str], engagement_patterns: Dict[str, Any] = None,
+                              optimization_suggestions: Dict[str, Any] = None) -> bool:
+        """更新或創建用戶偏好設定"""
+        try:
+            preferences_data = {
+                'user_id': user_id,
+                'focus_score': focus_score,
+                'primary_topics': primary_topics,
+                'engagement_patterns': engagement_patterns or {},
+                'optimization_suggestions': optimization_suggestions or {},
+                'last_optimization_at': datetime.now(timezone.utc).isoformat(),
+                'updated_at': datetime.now(timezone.utc).isoformat()
+            }
+            
+            # 嘗試更新，如果不存在則插入
+            existing = self.get_user_preferences(user_id)
+            
+            if existing:
+                result = self.supabase.table('user_preferences').update(preferences_data).eq('user_id', user_id).execute()
+            else:
+                preferences_data['created_at'] = datetime.now(timezone.utc).isoformat()
+                result = self.supabase.table('user_preferences').insert(preferences_data).execute()
+            
+            logger.info(f"Updated user preferences for {user_id}")
+            return len(result.data) > 0
+            
+        except Exception as e:
+            logger.error(f"Failed to update user preferences for {user_id}: {e}")
+            return False
+    
+    def update_user_guidance_status(self, user_id: str, guidance_completed: bool = True,
+                                  focus_score: float = None) -> bool:
+        """更新用戶引導完成狀態"""
+        try:
+            update_data = {
+                'guidance_completed': guidance_completed,
+                'last_guidance_at': datetime.now(timezone.utc).isoformat()
+            }
+            
+            if focus_score is not None:
+                update_data['focus_score'] = focus_score
+            
+            result = self.supabase.table('subscriptions').update(update_data).eq('user_id', user_id).execute()
+            
+            logger.info(f"Updated guidance status for user {user_id}")
+            return len(result.data) > 0
+            
+        except Exception as e:
+            logger.error(f"Failed to update guidance status for {user_id}: {e}")
+            return False
+    
+    def get_users_needing_guidance(self) -> List[Dict[str, Any]]:
+        """獲取需要引導的用戶"""
+        try:
+            # 查找未完成引導的活躍用戶
+            result = self.supabase.table('subscriptions').select(
+                'user_id, keywords, guidance_completed, focus_score, last_guidance_at'
+            ).eq('is_active', True).eq('guidance_completed', False).execute()
+            
+            return result.data
+            
+        except Exception as e:
+            logger.error(f"Failed to get users needing guidance: {e}")
+            return []
+    
+    def get_users_with_low_focus_score(self, threshold: float = 0.5) -> List[Dict[str, Any]]:
+        """獲取聚焦度較低的用戶"""
+        try:
+            result = self.supabase.table('subscriptions').select(
+                'user_id, keywords, focus_score, last_guidance_at'
+            ).eq('is_active', True).lt('focus_score', threshold).execute()
+            
+            return result.data
+            
+        except Exception as e:
+            logger.error(f"Failed to get users with low focus score: {e}")
+            return []
+    
+    def get_user_clustering_history(self, user_id: str, limit: int = 10) -> List[Dict[str, Any]]:
+        """獲取用戶的聚類歷史記錄"""
+        try:
+            result = self.supabase.table('keyword_clusters').select('*').eq(
+                'user_id', user_id
+            ).eq('is_active', True).order('created_at', desc=True).limit(limit).execute()
+            
+            return result.data
+            
+        except Exception as e:
+            logger.error(f"Failed to get clustering history for {user_id}: {e}")
+            return []
+    
+    def get_user_guidance_history(self, user_id: str, limit: int = 10) -> List[Dict[str, Any]]:
+        """獲取用戶的引導歷史記錄"""
+        try:
+            result = self.supabase.table('user_guidance_history').select('*').eq(
+                'user_id', user_id
+            ).order('created_at', desc=True).limit(limit).execute()
+            
+            return result.data
+            
+        except Exception as e:
+            logger.error(f"Failed to get guidance history for {user_id}: {e}")
+            return []
+    
+    def update_subscription_with_enhanced_data(self, user_id: str, keywords: List[str],
+                                             focus_score: float, primary_topics: List[str],
+                                             clustering_enabled: bool = True) -> bool:
+        """使用增強數據更新用戶訂閱"""
+        try:
+            update_data = {
+                'keywords': keywords,
+                'focus_score': focus_score,
+                'clustering_enabled': clustering_enabled,
+                'keywords_updated_at': datetime.now(timezone.utc).isoformat(),
+                'updated_at': datetime.now(timezone.utc).isoformat()
+            }
+            
+            result = self.supabase.table('subscriptions').update(update_data).eq('user_id', user_id).execute()
+            
+            # 同時更新用戶偏好
+            self.update_user_preferences(user_id, focus_score, primary_topics)
+            
+            logger.info(f"Updated subscription with enhanced data for user {user_id}")
+            return len(result.data) > 0
+            
+        except Exception as e:
+            logger.error(f"Failed to update subscription with enhanced data for {user_id}: {e}")
             return False
 
 # Create a global database manager instance
