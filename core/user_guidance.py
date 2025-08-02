@@ -21,6 +21,25 @@ class UserGuidanceSystem:
         self.clustering = get_clustering_instance()
         self.guidance_templates = self._load_guidance_templates()
     
+    def get_investment_focus_areas(self) -> List[Dict[str, Any]]:
+        """
+        獲取投資領域選項列表
+        """
+        options = self.guidance_templates['onboarding']['investment_focus']['options']
+        
+        # 轉換為 API 回應格式
+        result = []
+        for option in options:
+            result.append({
+                'code': option['id'],
+                'name_zh': option['name'],
+                'name_en': option['name'],  # 目前使用中文名稱
+                'description': option['description'],
+                'sample_keywords': option['keywords'][:3]  # 只取前3個關鍵字作為範例
+            })
+        
+        return result
+    
     def _load_guidance_templates(self) -> Dict[str, Any]:
         """載入引導模板"""
         return {

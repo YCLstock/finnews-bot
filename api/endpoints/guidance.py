@@ -117,6 +117,20 @@ class ClusteringAnalysisResponse(BaseModel):
 
 # API端點實作
 
+@router.get("/investment-focus-areas")
+async def get_investment_focus_areas():
+    """
+    獲取投資領域選項
+    """
+    try:
+        areas = guidance_system.get_investment_focus_areas()
+        return {
+            "success": True,
+            "data": areas
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get investment focus areas: {str(e)}")
+
 @router.get("/status")
 async def get_guidance_status(current_user_id: str = Depends(get_current_user_id)):
     """
