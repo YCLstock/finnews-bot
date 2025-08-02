@@ -1,0 +1,141 @@
+{
+  "topics_mapping": {
+    "latest": {
+      "keywords": [
+        "breaking", "news", "latest", "urgent", "update",
+        "突發", "最新", "新聞", "緊急", "更新", "即時"
+      ],
+      "priority": 12,
+      "description": "最新財經新聞"
+    },
+    "stock-market": {
+      "keywords": [
+        "stock", "market", "dow", "nasdaq", "s&p", "index", "trading", "shares", "equity",
+        "股市", "股票", "市場", "道瓊", "納斯達克", "指數", "交易", "股份", "證券"
+      ],
+      "priority": 1,
+      "description": "股票市場相關新聞"
+    },
+    "originals": {
+      "keywords": [
+        "analysis", "insight", "report", "exclusive", "investigation", "deep dive",
+        "分析", "洞察", "報告", "獨家", "調查", "深度"
+      ],
+      "priority": 11,
+      "description": "原創分析報導"
+    },
+    "tariff-updates": {
+      "keywords": [
+        "tariff", "trade war", "import", "export", "customs", "duty", "trade policy",
+        "關稅", "貿易戰", "進口", "出口", "海關", "稅務", "貿易政策"
+      ],
+      "priority": 8,
+      "description": "關稅與貿易政策更新"
+    },
+    "economies": {
+      "keywords": [
+        "economy", "gdp", "recession", "growth", "unemployment", "federal reserve", "interest rate",
+        "經濟", "國內生產總值", "衰退", "成長", "失業", "聯準會", "利率", "央行"
+      ],
+      "priority": 2,
+      "description": "經濟指標與政策"
+    },
+    "earnings": {
+      "keywords": [
+        "earnings", "revenue", "profit", "loss", "quarterly", "annual", "eps", "guidance",
+        "財報", "營收", "利潤", "虧損", "季度", "年度", "每股收益", "業績指導"
+      ],
+      "priority": 3,
+      "description": "企業財報與盈利"
+    },
+    "tech": {
+      "keywords": [
+        "technology", "apple", "microsoft", "google", "meta", "amazon", "tesla", "nvidia", "ai", "artificial intelligence",
+        "科技", "蘋果", "微軟", "谷歌", "臉書", "亞馬遜", "特斯拉", "輝達", "人工智慧", "AI"
+      ],
+      "priority": 4,
+      "description": "科技公司與創新"
+    },
+    "housing": {
+      "keywords": [
+        "housing", "real estate", "mortgage", "rent", "property", "home sales", "construction",
+        "房地產", "不動產", "房貸", "租金", "物業", "房屋銷售", "建築"
+      ],
+      "priority": 7,
+      "description": "房地產與住房市場"
+    },
+    "crypto": {
+      "keywords": [
+        "bitcoin", "ethereum", "cryptocurrency", "crypto", "blockchain", "digital currency", "defi", "nft",
+        "比特幣", "以太坊", "加密貨幣", "區塊鏈", "數位貨幣", "去中心化金融", "非同質化代幣"
+      ],
+      "priority": 5,
+      "description": "加密貨幣與區塊鏈"
+    },
+    "mergers-ipos": {
+      "keywords": [
+        "merger", "acquisition", "ipo", "spac", "takeover", "buyout", "deal", "consolidation",
+        "併購", "收購", "首次公開募股", "特殊目的收購公司", "接管", "交易", "整合"
+      ],
+      "priority": 6,
+      "description": "企業併購與IPO"
+    },
+    "electric-vehicles": {
+      "keywords": [
+        "electric vehicle", "ev", "tesla", "byd", "nio", "battery", "charging", "autonomous",
+        "電動車", "電動汽車", "特斯拉", "比亞迪", "蔚來", "電池", "充電", "自動駕駛"
+      ],
+      "priority": 9,
+      "description": "電動車與新能源"
+    },
+    "inflation": {
+      "keywords": [
+        "inflation", "cpi", "ppi", "deflation", "price", "cost", "consumer price", "producer price",
+        "通脹", "通膨", "消費者物價指數", "生產者物價指數", "通縮", "價格", "成本"
+      ],
+      "priority": 10,
+      "description": "通膨與物價指標"
+    }
+  },
+  "mapping_rules": {
+    "exact_match_weight": 3,
+    "partial_match_weight": 1,
+    "case_sensitive": false,
+    "min_confidence_score": 0.3,
+    "max_topics_per_keyword": 2,
+    "default_topic": "latest",
+    "language_bonus": {
+      "zh": 0.2,
+      "en": 0.1
+    }
+  },
+  "exclusion_patterns": [
+    "^spam$",
+    "^test$",
+    "^debug$",
+    "advertisement",
+    "廣告",
+    "測試"
+  ],
+  "priority_mapping": {
+    "1": "stock-market",
+    "2": "economies", 
+    "3": "earnings",
+    "4": "tech",
+    "5": "crypto",
+    "6": "mergers-ipos",
+    "7": "housing",
+    "8": "tariff-updates",
+    "9": "electric-vehicles",
+    "10": "inflation",
+    "11": "originals",
+    "12": "latest"
+  },
+  "metadata": {
+    "version": "3.0",
+    "last_updated": "2025-08-02",
+    "total_topics": 12,
+    "supported_languages": ["zh-TW", "zh-CN", "en-US"],
+    "description": "Yahoo Finance Topics 關鍵字映射配置"
+  }
+}
