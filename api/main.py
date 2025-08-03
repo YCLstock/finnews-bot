@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 import traceback
 
 from core.config import settings
-from api.endpoints import subscriptions, history, guidance
+from api.endpoints import subscriptions, history, guidance, quick_onboarding
 from api.auth import jwt_verifier
 
 # 驗證環境變數
@@ -92,6 +92,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 app.include_router(subscriptions.router, prefix="/api/v1")
 app.include_router(history.router, prefix="/api/v1")
 app.include_router(guidance.router, prefix="/api/v1")
+app.include_router(quick_onboarding.router, prefix="/api/v1")
 
 @app.get("/")
 async def root():

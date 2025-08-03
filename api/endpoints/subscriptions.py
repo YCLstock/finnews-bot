@@ -5,26 +5,45 @@ from pydantic import BaseModel, validator
 from api.auth import get_current_user_id, verify_supabase_jwt
 from core.database import db_manager
 from core.utils import validate_discord_webhook, validate_keywords, normalize_language_code
+from core.delivery_manager import get_delivery_manager
 
 router = APIRouter(prefix="/subscriptions", tags=["subscriptions"])
 
 # Pydantic models for request/response
 class SubscriptionCreate(BaseModel):
     """創建訂閱的請求模型"""
-    delivery_platform: str = "discord"  # 目前只支援 Discord
-    delivery_target: str  # Discord Webhook URL
+    delivery_platform: str = "discord"  # 支援 "discord" 或 "email"
+    delivery_target: str  # Discord Webhook URL 或 Email 地址
     keywords: List[str] = []
     news_sources: List[str] = ["yahoo_finance"]  # 預設新聞源
     summary_language: str = "zh-tw"  # 預設繁體中文
     push_frequency_type: str = "daily"  # 新的推送頻率類型
     
+    @validator('delivery_platform')
+    def validate_platform(cls, v):
+        supported_platforms = get_delivery_manager().get_supported_platforms()
+        if v not in supported_platforms:
+            raise ValueError(f'delivery_platform must be one of: {", ".join(supported_platforms)}')
+        return v
+    
     @validator('delivery_target')
-    def validate_webhook(cls, v):
-        print(f"🔍 驗證 Discord Webhook URL: {v}")
-        if not validate_discord_webhook(v):
-            print(f"❌ Discord Webhook URL 驗證失敗: {v}")
-            raise ValueError(f'Invalid Discord webhook URL: {v}. Must start with https://discord.com/api/webhooks/')
-        print(f"✅ Discord Webhook URL 驗證通過: {v}")
+    def validate_target(cls, v, values):
+        platform = values.get('delivery_platform', 'discord')
+        print(f"🔍 驗證 {platform} 推送目標: {v}")
+        
+        delivery_manager = get_delivery_manager()
+        if not delivery_manager.validate_target(platform, v):
+            if platform == 'discord':
+                error_msg = f'Invalid Discord webhook URL: {v}. Must start with https://discord.com/api/webhooks/'
+            elif platform == 'email':
+                error_msg = f'Invalid email address: {v}. Please provide a valid email address.'
+            else:
+                error_msg = f'Invalid {platform} target: {v}'
+            
+            print(f"❌ {platform} 推送目標驗證失敗: {v}")
+            raise ValueError(error_msg)
+        
+        print(f"✅ {platform} 推送目標驗證通過: {v}")
         return v
     
     @validator('keywords')
@@ -66,10 +85,27 @@ class SubscriptionUpdate(BaseModel):
     push_frequency_type: str = None
     is_active: bool = None
     
+    @validator('delivery_platform')
+    def validate_platform(cls, v):
+        if v is not None:
+            supported_platforms = get_delivery_manager().get_supported_platforms()
+            if v not in supported_platforms:
+                raise ValueError(f'delivery_platform must be one of: {", ".join(supported_platforms)}')
+        return v
+    
     @validator('delivery_target')
-    def validate_webhook(cls, v):
-        if v is not None and not validate_discord_webhook(v):
-            raise ValueError('Invalid Discord webhook URL')
+    def validate_target(cls, v, values):
+        if v is not None:
+            platform = values.get('delivery_platform')
+            if platform:
+                delivery_manager = get_delivery_manager()
+                if not delivery_manager.validate_target(platform, v):
+                    if platform == 'discord':
+                        raise ValueError('Invalid Discord webhook URL')
+                    elif platform == 'email':
+                        raise ValueError('Invalid email address')
+                    else:
+                        raise ValueError(f'Invalid {platform} target')
         return v
     
     @validator('keywords')

@@ -16,7 +16,8 @@ sys.path.insert(0, str(project_root))
 
 from core.config import settings
 from core.database import db_manager
-from core.utils import get_current_taiwan_time, format_taiwan_datetime, send_batch_to_discord, create_push_summary_message
+from core.utils import get_current_taiwan_time, format_taiwan_datetime, create_push_summary_message
+from core.delivery_manager import get_delivery_manager
 
 class SmartPusher:
     """智能推送器 - 基於已存儲文章"""
@@ -168,12 +169,20 @@ class SmartPusher:
             print(f"⏭️ 跳過本次推送，等待下次推送時間")
             return False
         
-        # 推送到 Discord
-        print(f"📤 開始推送 {len(articles)} 篇文章到 Discord...")
-        success, failed_articles = send_batch_to_discord(
-            subscription['delivery_target'],
-            articles,
-            subscription
+        # 推送到指定平台
+        delivery_platform = subscription.get('delivery_platform', 'discord')
+        delivery_target = subscription['delivery_target']
+        print(f"📤 開始推送 {len(articles)} 篇文章到 {delivery_platform}...")
+        
+        delivery_manager = get_delivery_manager()
+        import asyncio
+        success, failed_articles = asyncio.run(
+            delivery_manager.send_to_platform(
+                delivery_platform,
+                delivery_target,
+                articles,
+                subscription
+            )
         )
         
         if success:
@@ -204,11 +213,14 @@ class SmartPusher:
                 db_manager.mark_push_window_completed(user_id, frequency_type)
                 
                 # 發送推送總結消息
-                create_push_summary_message(
-                    subscription['delivery_target'],
-                    len(successful_articles),
-                    len(articles),
-                    frequency_type
+                asyncio.run(
+                    delivery_manager.send_summary_message(
+                        subscription.get('delivery_platform', 'discord'),
+                        subscription['delivery_target'],
+                        len(successful_articles),
+                        len(articles),
+                        frequency_type
+                    )
                 )
                 
                 print(f"🎉 用戶 {user_id[:8]}... 推送完成: {len(successful_articles)} 篇成功")

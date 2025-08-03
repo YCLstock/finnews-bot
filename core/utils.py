@@ -51,7 +51,12 @@ def generate_summary_optimized(content: str) -> str:
         return "[摘要生成失敗]"
 
 def send_to_discord(webhook: str, articles: List[Dict[str, Any]], subscription: Dict[str, Any] = None) -> bool:
-    """將格式化後的新聞摘要發送到 Discord Webhook（舊版，保持向後兼容）"""
+    """
+    將格式化後的新聞摘要發送到 Discord Webhook
+    
+    ⚠️ DEPRECATED: 此函數已棄用，請使用 core.delivery_manager.DeliveryManager
+    保持此函數僅為向後兼容性，建議遷移到新的多平台推送系統
+    """
     if not webhook.startswith("https://discord.com/api/webhooks/"):
         print(f"❌ Webhook 不正確：{webhook}")
         return False
@@ -83,6 +88,9 @@ def send_to_discord(webhook: str, articles: List[Dict[str, Any]], subscription: 
 def send_batch_to_discord(webhook: str, articles: List[Dict[str, Any]], subscription: Dict[str, Any] = None) -> Tuple[bool, List[Dict[str, Any]]]:
     """
     批量發送新聞到 Discord - 每則新聞單獨發送
+    
+    ⚠️ DEPRECATED: 此函數已棄用，請使用 core.delivery_manager.DeliveryManager
+    保持此函數僅為向後兼容性，建議遷移到新的多平台推送系統
     
     Returns:
         Tuple[bool, List[Dict]]: (整體是否成功, 失敗的文章列表)
@@ -189,7 +197,12 @@ def send_batch_to_discord(webhook: str, articles: List[Dict[str, Any]], subscrip
     return overall_success, failed_articles
 
 def create_push_summary_message(webhook: str, success_count: int, total_count: int, frequency_type: str) -> bool:
-    """發送推送總結消息"""
+    """
+    發送推送總結消息
+    
+    ⚠️ DEPRECATED: 此函數已棄用，請使用 core.delivery_manager.DeliveryManager.send_summary_message
+    保持此函數僅為向後兼容性，建議遷移到新的多平台推送系統
+    """
     if success_count == 0:
         return False
     

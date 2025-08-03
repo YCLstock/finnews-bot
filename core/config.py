@@ -16,6 +16,13 @@ class Settings:
     # OpenAI
     OPENAI_API_KEY: str = os.environ.get("OPENAI_API_KEY", "")
     
+    # Email/SMTP 配置
+    SMTP_SERVER: str = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
+    SMTP_PORT: int = int(os.environ.get("SMTP_PORT", "587"))
+    SMTP_USER: str = os.environ.get("SMTP_USER", "")
+    SMTP_PASSWORD: str = os.environ.get("SMTP_PASSWORD", "")
+    FROM_EMAIL: str = os.environ.get("FROM_EMAIL", "noreply@finnews-bot.com")
+    
     # API Settings
     API_HOST: str = os.environ.get("API_HOST", "0.0.0.0")
     API_PORT: int = int(os.environ.get("API_PORT", "8000"))
@@ -42,5 +49,18 @@ class Settings:
         
         if missing:
             raise ValueError(f"Missing required environment variables: {', '.join(missing)}")
+            
+    def validate_email_config(self):
+        """Validate email configuration (optional)"""
+        email_missing = []
+        if not self.SMTP_USER:
+            email_missing.append("SMTP_USER")
+        if not self.SMTP_PASSWORD:
+            email_missing.append("SMTP_PASSWORD")
+        
+        if email_missing:
+            print(f"WARNING: Email delivery disabled - missing: {', '.join(email_missing)}")
+            return False
+        return True
 
 settings = Settings() 
