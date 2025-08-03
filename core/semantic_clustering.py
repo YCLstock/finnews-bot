@@ -37,6 +37,8 @@ class SemanticKeywordClustering:
         # 不再使用本地模型，只保留 OpenAI API + 規則備用
         self.model = None
         
+        # 初始化中英文語義對應字典
+        self.load_semantic_mappings()
         self.load_topic_embeddings()
         
         # 聚類參數
@@ -46,6 +48,93 @@ class SemanticKeywordClustering:
             'similarity_threshold': 0.7,
             'focus_threshold': 0.8  # 聚焦度閾值
         }
+    
+    def load_semantic_mappings(self):
+        """載入中英文語義對應字典"""
+        self.semantic_mappings = {
+            # 科技類
+            'AI': ['AI', 'ai', '人工智慧', '人工智能', 'artificial intelligence', 'machine learning', '機器學習'],
+            '蘋果': ['蘋果', '苹果', 'Apple', 'AAPL', 'apple'],
+            '微軟': ['微軟', '微软', 'Microsoft', 'MSFT', 'microsoft'],
+            '谷歌': ['谷歌', '穀歌', 'Google', 'GOOGL', 'Alphabet', 'google'],
+            '特斯拉': ['特斯拉', '特斯拉', 'Tesla', 'TSLA', 'tesla'],
+            
+            # 加密貨幣類
+            '比特幣': ['比特幣', '比特币', 'Bitcoin', 'BTC', 'bitcoin'],
+            '以太坊': ['以太坊', '以太坊', 'Ethereum', 'ETH', 'ethereum'],
+            '加密貨幣': ['加密貨幣', '加密货币', 'cryptocurrency', 'crypto', '數字貨幣', '数字货币'],
+            '區塊鏈': ['區塊鏈', '区块链', 'blockchain', 'block chain'],
+            
+            # 股市類
+            '股票': ['股票', '股市', 'stock', 'stocks', 'equity', 'share'],
+            '市場': ['市場', '市场', 'market', 'markets'],
+            '交易': ['交易', '贸易', 'trading', 'trade', 'transaction'],
+            '投資': ['投資', '投资', 'investment', 'investing', 'invest'],
+            
+            # 經濟類
+            '經濟': ['經濟', '经济', 'economy', 'economic', 'economics'],
+            '通膨': ['通膨', '通胀', 'inflation', '通貨膨脹', '通货膨胀'],
+            '利率': ['利率', '利息', 'interest rate', 'rate', 'rates'],
+            '聯準會': ['聯準會', '联准会', 'Fed', 'Federal Reserve', 'FED'],
+            
+            # 房地產類
+            '房地產': ['房地產', '房地产', 'real estate', 'property', 'housing', '房價', '房价'],
+            
+            # 能源類
+            '電動車': ['電動車', '电动车', 'electric vehicle', 'EV', 'electric car'],
+            '能源': ['能源', '电力', 'energy', 'power', '綠能', '绿能'],
+        }
+        
+        # 創建反向映射（從關鍵字到標準化名稱）
+        self.keyword_to_standard = {}
+        for standard_name, variations in self.semantic_mappings.items():
+            for variation in variations:
+                self.keyword_to_standard[variation.lower()] = standard_name
+
+    def normalize_keywords(self, keywords: List[str]) -> List[str]:
+        """標準化關鍵字，將語義相同的中英文詞彙統一"""
+        normalized = []
+        processed_standards = set()
+        standard_groups = {}  # 用於收集屬於同一標準化名稱的所有關鍵字
+        
+        # 第一步：收集所有語義相同的關鍵字
+        for keyword in keywords:
+            keyword_lower = keyword.lower().strip()
+            standard_name = self.keyword_to_standard.get(keyword_lower)
+            
+            if standard_name:
+                if standard_name not in standard_groups:
+                    standard_groups[standard_name] = []
+                standard_groups[standard_name].append(keyword)
+            else:
+                # 沒有對應的標準化名稱，直接添加
+                normalized.append(keyword)
+        
+        # 第二步：為每個標準化群組創建合併的關鍵字
+        for standard_name, group_keywords in standard_groups.items():
+            if len(group_keywords) == 1:
+                # 只有一個關鍵字，直接使用
+                normalized.append(group_keywords[0])
+            else:
+                # 多個語義相同的關鍵字，進行合併顯示
+                # 選擇最常見或最標準的作為主要顯示，其他作為補充
+                primary_keyword = group_keywords[0]
+                other_keywords = group_keywords[1:]
+                
+                # 如果有中文，優先顯示中文；如果有英文全稱，優先顯示全稱
+                for kw in group_keywords:
+                    if any('\u4e00' <= char <= '\u9fff' for char in kw):  # 包含中文字符
+                        primary_keyword = kw
+                        other_keywords = [k for k in group_keywords if k != kw]
+                        break
+                
+                if len(other_keywords) > 0:
+                    combined = f"{primary_keyword} (包含: {', '.join(other_keywords)})"
+                    normalized.append(combined)
+                else:
+                    normalized.append(primary_keyword)
+        
+        return normalized
     
     def load_topic_embeddings(self):
         """預計算Topics的語義向量"""
@@ -105,14 +194,31 @@ class SemanticKeywordClustering:
         if len(keywords) <= 1:
             return self._single_keyword_result(keywords)
         
+        # 預處理：標準化中英文語義相同的關鍵字
+        original_keywords = keywords.copy()
+        normalized_keywords = self.normalize_keywords(keywords)
+        
+        logger.info(f"原始關鍵字: {original_keywords}")
+        logger.info(f"標準化後: {normalized_keywords}")
+        
         try:
             if self.use_openai:
-                return self._openai_semantic_clustering(keywords)
+                result = self._openai_semantic_clustering(normalized_keywords)
+                # 在結果中保留原始關鍵字信息
+                result['original_keywords'] = original_keywords
+                result['normalized_keywords'] = normalized_keywords
+                return result
             else:
-                return self._fallback_clustering(keywords)
+                result = self._fallback_clustering(normalized_keywords)
+                result['original_keywords'] = original_keywords
+                result['normalized_keywords'] = normalized_keywords
+                return result
         except Exception as e:
             logger.error(f"Clustering failed: {e}")
-            return self._fallback_clustering(keywords)
+            result = self._fallback_clustering(normalized_keywords)
+            result['original_keywords'] = original_keywords
+            result['normalized_keywords'] = normalized_keywords
+            return result
     
     
     def _openai_semantic_clustering(self, keywords: List[str]) -> Dict[str, Any]:
@@ -195,13 +301,20 @@ class SemanticKeywordClustering:
         topic_groups = {}
         unassigned = []
         
+        # 先檢查是否有標準化處理過的關鍵字
         for keyword in keywords:
             assigned = False
             keyword_lower = keyword.lower()
             
+            # 提取主要關鍵字（如果是合併格式的話）
+            main_keyword = keyword.split(' (包含:')[0] if '(包含:' in keyword else keyword
+            main_keyword_lower = main_keyword.lower()
+            
             for topic, topic_keywords in self.fallback_topic_keywords.items():
                 for topic_kw in topic_keywords:
-                    if (topic_kw.lower() in keyword_lower or 
+                    if (topic_kw.lower() in main_keyword_lower or 
+                        main_keyword_lower in topic_kw.lower() or
+                        topic_kw.lower() in keyword_lower or 
                         keyword_lower in topic_kw.lower()):
                         if topic not in topic_groups:
                             topic_groups[topic] = []
