@@ -7,6 +7,7 @@
 from typing import List, Dict, Any, Literal
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, validator
+from datetime import datetime
 import logging
 
 from api.auth import get_current_user_id
@@ -313,24 +314,28 @@ async def validate_delivery_target(
                 detail=f"Unsupported platform: {platform}"
             )
         
-        # 驗證目標格式
-        is_valid = delivery_manager.validate_target(platform, target)
+        # 使用增強驗證（包含連通性測試）
+        is_valid, error_message = await delivery_manager.validate_target_with_test(platform, target)
         
         response = {
             "platform": platform,
             "target": target,
-            "is_valid": is_valid
+            "is_valid": is_valid,
+            "last_updated": datetime.now().isoformat(),
+            "analysis_details": {
+                "format_check": delivery_manager.validate_target(platform, target), 
+                "connectivity_test": is_valid if delivery_manager.validate_target(platform, target) else False
+            }
         }
         
         if not is_valid:
+            response["error"] = error_message
             if platform == "discord":
-                response["error"] = "Discord Webhook URL 格式不正確，應以 https://discord.com/api/webhooks/ 開頭"
-                response["help"] = "請確認您複製的是完整的 Webhook URL"
+                response["help"] = "請確認您複製的是完整的 Webhook URL，且該 Webhook 仍然有效"
             elif platform == "email":
-                response["error"] = "Email 地址格式不正確"
                 response["help"] = "請輸入有效的電子郵件地址，例如：user@example.com"
             else:
-                response["error"] = f"Invalid {platform} target format"
+                response["help"] = f"請檢查 {platform} 目標格式是否正確"
         
         return response
         

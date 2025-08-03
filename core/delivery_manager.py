@@ -61,6 +61,62 @@ class DiscordProvider(DeliveryProvider):
         """驗證 Discord Webhook URL 格式"""
         return target.startswith("https://discord.com/api/webhooks/")
     
+    async def validate_target_with_test(self, target: str) -> Tuple[bool, str]:
+        """
+        驗證 Discord Webhook URL 並測試連通性
+        
+        Returns:
+            Tuple[bool, str]: (是否有效, 錯誤訊息)
+        """
+        import aiohttp
+        import asyncio
+        
+        # 首先檢查格式
+        if not self.validate_target(target):
+            return False, "Discord Webhook URL 格式不正確，應以 https://discord.com/api/webhooks/ 開頭"
+        
+        try:
+            # 發送測試請求到 Discord webhook
+            timeout = aiohttp.ClientTimeout(total=10)  # 10秒超時
+            
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                # 發送一個測試的 embed 消息
+                test_payload = {
+                    "embeds": [{
+                        "title": "🔍 驗證測試",
+                        "description": "此為系統驗證消息，可忽略。",
+                        "color": 3447003,
+                        "footer": {
+                            "text": "FinNews-Bot 驗證系統"
+                        }
+                    }]
+                }
+                
+                async with session.post(target, json=test_payload) as response:
+                    if response.status == 204:
+                        # Discord webhook 成功回應 204 No Content
+                        logger.info(f"✅ Discord webhook validation successful: {target[:50]}...")
+                        return True, ""
+                    elif response.status == 404:
+                        return False, "Webhook 不存在或已被刪除"
+                    elif response.status == 401:
+                        return False, "Webhook 權限不足或無效"
+                    elif response.status == 429:
+                        return False, "請求過於頻繁，請稍後再試"
+                    else:
+                        error_text = await response.text()
+                        logger.warning(f"⚠️ Discord webhook returned status {response.status}: {error_text}")
+                        return False, f"Discord API 回應異常 (狀態碼: {response.status})"
+                        
+        except asyncio.TimeoutError:
+            return False, "連接超時，請檢查網路連線或稍後重試"
+        except aiohttp.ClientError as e:
+            logger.error(f"❌ Discord webhook validation network error: {e}")
+            return False, "網路連接錯誤，請檢查網路連線"
+        except Exception as e:
+            logger.error(f"❌ Discord webhook validation error: {e}")
+            return False, f"驗證時發生錯誤: {str(e)}"
+    
     async def send_articles(self, webhook: str, articles: List[Dict[str, Any]], subscription: Dict[str, Any]) -> Tuple[bool, List[Dict[str, Any]]]:
         """
         批量發送新聞到 Discord - 每則新聞單獨發送
@@ -404,6 +460,33 @@ class DeliveryManager:
             return False
         
         return provider.validate_target(target)
+    
+    async def validate_target_with_test(self, platform: str, target: str) -> Tuple[bool, str]:
+        """
+        驗證推送目標並測試連通性
+        
+        Returns:
+            Tuple[bool, str]: (是否有效, 錯誤訊息)
+        """
+        provider = self.get_provider(platform)
+        if not provider:
+            return False, f"不支援的平台: {platform}"
+        
+        # 如果是 Discord 且有測試方法，使用增強驗證
+        if platform.lower() == 'discord' and hasattr(provider, 'validate_target_with_test'):
+            return await provider.validate_target_with_test(target)
+        
+        # 否則使用基本格式驗證
+        is_valid = provider.validate_target(target)
+        if is_valid:
+            return True, ""
+        else:
+            if platform.lower() == 'discord':
+                return False, "Discord Webhook URL 格式不正確，應以 https://discord.com/api/webhooks/ 開頭"
+            elif platform.lower() == 'email':
+                return False, "Email 地址格式不正確"
+            else:
+                return False, f"無效的 {platform} 目標格式"
     
     async def send_to_platform(self, platform: str, target: str, articles: List[Dict[str, Any]], subscription: Dict[str, Any]) -> Tuple[bool, List[Dict[str, Any]]]:
         """發送新聞到指定平台
