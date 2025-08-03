@@ -78,6 +78,7 @@ class SubscriptionCreate(BaseModel):
 
 class SubscriptionUpdate(BaseModel):
     """更新訂閱的請求模型"""
+    delivery_platform: str = None
     delivery_target: str = None
     keywords: List[str] = None
     news_sources: List[str] = None
