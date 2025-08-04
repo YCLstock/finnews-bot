@@ -205,7 +205,7 @@ async def quick_setup(
             "onboarding_method": "quick_start",
             "guidance_completed": True,
             "focus_score": template["focus_score"],
-            "clustering_enabled": False,  # 快速模式不使用聚類
+            "clustering_method": "rule_based",  # 快速模式使用規則分析
             "primary_topics": template["topics"]
         }
         

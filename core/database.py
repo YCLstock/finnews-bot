@@ -581,13 +581,13 @@ class DatabaseManager:
     
     def update_subscription_with_enhanced_data(self, user_id: str, keywords: List[str],
                                              focus_score: float, primary_topics: List[str],
-                                             clustering_enabled: bool = True) -> bool:
+                                             clustering_method: str = "semantic") -> bool:
         """使用增強數據更新用戶訂閱"""
         try:
             update_data = {
                 'keywords': keywords,
                 'focus_score': focus_score,
-                'clustering_enabled': clustering_enabled,
+                'clustering_method': clustering_method,
                 'keywords_updated_at': datetime.now(timezone.utc).isoformat(),
                 'updated_at': datetime.now(timezone.utc).isoformat()
             }

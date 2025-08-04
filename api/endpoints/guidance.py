@@ -154,7 +154,7 @@ async def get_guidance_status(current_user_id: str = Depends(get_current_user_id
             "needs_guidance": not subscription.get("guidance_completed", False),
             "focus_score": subscription.get("focus_score", 0.0),
             "last_guidance_at": subscription.get("last_guidance_at"),
-            "clustering_enabled": subscription.get("clustering_enabled", True)
+            "clustering_enabled": subscription.get("clustering_method", "semantic") == "semantic"
         }
         
     except Exception as e:
@@ -233,7 +233,8 @@ async def finalize_onboarding(
                 current_user_id, 
                 request.final_keywords, 
                 focus_score, 
-                primary_topics
+                primary_topics,
+                clustering_method="semantic"
             )
             if not update_success:
                 raise HTTPException(status_code=500, detail="Failed to update subscription")
@@ -244,7 +245,7 @@ async def finalize_onboarding(
                 "keywords": request.final_keywords,
                 "focus_score": focus_score,
                 "guidance_completed": True,
-                "clustering_enabled": True,
+                "clustering_method": "semantic",
                 "is_active": True,
                 "push_frequency_type": "daily"
             }
@@ -390,7 +391,7 @@ async def get_current_focus_score(current_user_id: str = Depends(get_current_use
             return {
                 "has_subscription": True,
                 "focus_score": 0.0,
-                "clustering_enabled": subscription.get("clustering_enabled", False),
+                "clustering_enabled": subscription.get("clustering_method", "rule_based") == "semantic",
                 "needs_keywords": True
             }
         
@@ -408,7 +409,7 @@ async def get_current_focus_score(current_user_id: str = Depends(get_current_use
         return {
             "has_subscription": True,
             "focus_score": current_focus_score,
-            "clustering_enabled": subscription.get("clustering_enabled", False),
+            "clustering_enabled": subscription.get("clustering_method", "rule_based") == "semantic",
             "keywords_count": len(user_keywords),
             "clusters_count": len(clustering_result['clusters']),
             "primary_topics": clustering_result['primary_topics']
@@ -434,7 +435,8 @@ async def update_user_keywords(
             current_user_id,
             request.keywords,
             clustering_result['focus_score'],
-            clustering_result['primary_topics']
+            clustering_result['primary_topics'],
+            clustering_method="semantic"
         )
         
         if not update_success:
