@@ -202,10 +202,9 @@ async def quick_setup(
             "summary_language": request.summary_language,
             "push_frequency_type": request.push_frequency_type,
             "is_active": True,
-            "onboarding_method": "quick_start",
             "guidance_completed": True,
             "focus_score": template["focus_score"],
-            "clustering_method": "rule_based",  # 快速模式使用規則分析
+            "clustering_method": "rule_based",  # 快速模式使用規則分析，用來推斷 onboarding_method
             "primary_topics": template["topics"]
         }
         
@@ -373,9 +372,10 @@ async def check_existing_subscription(
                 "message": "您可以使用快速設定開始接收新聞"
             }
         
-        # 檢查是否為舊的複雜設定
-        onboarding_method = existing_subscription.get("onboarding_method", "custom")
-        is_quick_setup = onboarding_method == "quick_start"
+        # 檢查是否為舊的複雜設定（通過 clustering_method 推斷）
+        clustering_method = existing_subscription.get("clustering_method", "semantic")
+        is_quick_setup = clustering_method == "rule_based"
+        onboarding_method = "quick_start" if is_quick_setup else "custom"
         
         return {
             "has_subscription": True,
