@@ -83,14 +83,15 @@ class QuickSetupRequest(BaseModel):
     def validate_target(cls, v, values):
         platform = values.get('delivery_platform')
         if platform:
-            delivery_manager = get_delivery_manager()
-            if not delivery_manager.validate_target(platform, v):
-                if platform == 'discord':
-                    raise ValueError('Invalid Discord webhook URL. Must start with https://discord.com/api/webhooks/')
-                elif platform == 'email':
-                    raise ValueError('Invalid email address. Please provide a valid email address.')
-                else:
-                    raise ValueError(f'Invalid {platform} target')
+            # 只進行格式驗證，不進行網路連通性測試
+            if platform == 'discord':
+                if not v.startswith('https://discord.com/api/webhooks/'):
+                    raise ValueError('Discord Webhook URL 格式不正確，必須以 https://discord.com/api/webhooks/ 開頭')
+            elif platform == 'email':
+                import re
+                email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+                if not re.match(email_pattern, v):
+                    raise ValueError('電子郵件地址格式不正確，請提供有效的電子郵件地址')
         return v
     
     @validator('summary_language')
@@ -303,7 +304,7 @@ async def validate_delivery_target(
     platform: str,
     target: str
 ):
-    """驗證推送目標格式"""
+    """驗證推送目標格式（僅格式驗證，不進行網路測試）"""
     try:
         delivery_manager = get_delivery_manager()
         
@@ -314,38 +315,47 @@ async def validate_delivery_target(
                 detail=f"Unsupported platform: {platform}"
             )
         
-        # 使用增強驗證（包含連通性測試）
-        is_valid, error_message = await delivery_manager.validate_target_with_test(platform, target)
+        # 只進行格式驗證
+        format_valid = False
+        error_message = ""
+        
+        if platform == 'discord':
+            format_valid = target.startswith('https://discord.com/api/webhooks/')
+            if not format_valid:
+                error_message = "Discord Webhook URL 格式不正確，必須以 https://discord.com/api/webhooks/ 開頭"
+        elif platform == 'email':
+            import re
+            email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+            format_valid = bool(re.match(email_pattern, target))
+            if not format_valid:
+                error_message = "電子郵件地址格式不正確，請提供有效的電子郵件地址"
         
         response = {
             "platform": platform,
-            "target": target,
-            "is_valid": is_valid,
-            "last_updated": datetime.now().isoformat(),
-            "analysis_details": {
-                "format_check": delivery_manager.validate_target(platform, target), 
-                "connectivity_test": is_valid if delivery_manager.validate_target(platform, target) else False
-            }
+            "target": target[:50] + "..." if len(target) > 50 else target,  # 隱藏完整目標
+            "is_valid": format_valid,
+            "validation_type": "format_only",
+            "last_updated": datetime.now().isoformat()
         }
         
-        if not is_valid:
+        if not format_valid:
             response["error"] = error_message
             if platform == "discord":
-                response["help"] = "請確認您複製的是完整的 Webhook URL，且該 Webhook 仍然有效"
+                response["help"] = "請確認您複製的是完整的 Discord Webhook URL"
             elif platform == "email":
                 response["help"] = "請輸入有效的電子郵件地址，例如：user@example.com"
-            else:
-                response["help"] = f"請檢查 {platform} 目標格式是否正確"
+        else:
+            response["message"] = "格式驗證通過，將在提交時進行連通性測試"
         
         return response
         
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to validate target: {str(e)}")
+        logger.error(f"Failed to validate target format: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Validation failed"
+            detail="Format validation failed"
         )
 
 @router.get("/migration-check")

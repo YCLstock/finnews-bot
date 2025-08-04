@@ -1,6 +1,7 @@
 from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, validator
+from datetime import datetime
 
 from api.auth import get_current_user_id, verify_supabase_jwt
 from core.database import db_manager
@@ -29,21 +30,21 @@ class SubscriptionCreate(BaseModel):
     @validator('delivery_target')
     def validate_target(cls, v, values):
         platform = values.get('delivery_platform', 'discord')
-        print(f"🔍 驗證 {platform} 推送目標: {v}")
+        print(f"🔍 格式驗證 {platform} 推送目標: {v}")
         
-        delivery_manager = get_delivery_manager()
-        if not delivery_manager.validate_target(platform, v):
-            if platform == 'discord':
-                error_msg = f'Invalid Discord webhook URL: {v}. Must start with https://discord.com/api/webhooks/'
-            elif platform == 'email':
-                error_msg = f'Invalid email address: {v}. Please provide a valid email address.'
-            else:
-                error_msg = f'Invalid {platform} target: {v}'
-            
-            print(f"❌ {platform} 推送目標驗證失敗: {v}")
-            raise ValueError(error_msg)
+        # 只進行格式驗證，不進行網路連通性測試
+        if platform == 'discord':
+            if not v.startswith('https://discord.com/api/webhooks/'):
+                print(f"❌ Discord URL 格式錯誤: {v}")
+                raise ValueError('Discord Webhook URL 格式不正確，必須以 https://discord.com/api/webhooks/ 開頭')
+        elif platform == 'email':
+            import re
+            email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+            if not re.match(email_pattern, v):
+                print(f"❌ Email 格式錯誤: {v}")
+                raise ValueError('電子郵件地址格式不正確，請提供有效的電子郵件地址')
         
-        print(f"✅ {platform} 推送目標驗證通過: {v}")
+        print(f"✅ {platform} 格式驗證通過: {v}")
         return v
     
     @validator('keywords')
@@ -99,14 +100,15 @@ class SubscriptionUpdate(BaseModel):
         if v is not None:
             platform = values.get('delivery_platform')
             if platform:
-                delivery_manager = get_delivery_manager()
-                if not delivery_manager.validate_target(platform, v):
-                    if platform == 'discord':
-                        raise ValueError('Invalid Discord webhook URL')
-                    elif platform == 'email':
-                        raise ValueError('Invalid email address')
-                    else:
-                        raise ValueError(f'Invalid {platform} target')
+                # 只進行格式驗證，不進行網路連通性測試
+                if platform == 'discord':
+                    if not v.startswith('https://discord.com/api/webhooks/'):
+                        raise ValueError('Discord Webhook URL 格式不正確，必須以 https://discord.com/api/webhooks/ 開頭')
+                elif platform == 'email':
+                    import re
+                    email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+                    if not re.match(email_pattern, v):
+                        raise ValueError('電子郵件地址格式不正確，請提供有效的電子郵件地址')
         return v
     
     @validator('keywords')
@@ -407,4 +409,51 @@ async def get_frequency_options():
                 "max_articles": 3
             }
         ]
-    } 
+    }
+
+@router.post("/validate-connectivity")
+async def validate_delivery_connectivity(
+    current_user_id: str = Depends(get_current_user_id)
+):
+    """驗證推送目標的網路連通性（僅在用戶完成設置時調用）"""
+    try:
+        print(f"🔍 執行用戶 {current_user_id} 的連通性驗證")
+        
+        # 獲取用戶訂閱
+        subscription = db_manager.get_subscription_by_user(current_user_id)
+        if not subscription:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="找不到訂閱記錄"
+            )
+        
+        platform = subscription.get('delivery_platform')
+        target = subscription.get('delivery_target')
+        
+        if not platform or not target:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="訂閱記錄中缺少平台或目標資訊"
+            )
+        
+        # 執行完整驗證（包含網路連通性測試）
+        delivery_manager = get_delivery_manager()
+        is_valid, error_message = await delivery_manager.validate_target_with_test(platform, target)
+        
+        return {
+            "platform": platform,
+            "target": target[:50] + "..." if len(target) > 50 else target,  # 隱藏完整目標
+            "is_valid": is_valid,
+            "error_message": error_message if not is_valid else None,
+            "timestamp": datetime.now().isoformat(),
+            "validation_type": "connectivity_test"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ 連通性驗證失敗: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"連通性驗證失敗: {str(e)}"
+        ) 

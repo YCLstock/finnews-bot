@@ -275,6 +275,26 @@ class EmailProvider(DeliveryProvider):
         email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
         return re.match(email_pattern, email) is not None
     
+    async def validate_target_with_test(self, email: str) -> Tuple[bool, str]:
+        """
+        驗證 Email 地址格式（不進行實際發送測試）
+        
+        Returns:
+            Tuple[bool, str]: (是否有效, 錯誤訊息)
+        """
+        # 首先檢查格式
+        if not self.validate_target(email):
+            return False, "電子郵件地址格式不正確，請提供有效的電子郵件地址"
+        
+        # 對於 Email，我們不進行實際的發送測試，因為這會發送測試郵件
+        # 只進行格式驗證和 SMTP 配置檢查
+        if not all([self.smtp_server, self.smtp_user, self.smtp_password]):
+            logger.warning("⚠️ SMTP configuration incomplete, but email format is valid")
+            return True, "Email 格式正確，但 SMTP 配置未完成，可能無法發送郵件"
+        
+        # Email 格式正確且 SMTP 配置完整
+        return True, ""
+    
     async def send_articles(self, email: str, articles: List[Dict[str, Any]], subscription: Dict[str, Any]) -> Tuple[bool, List[Dict[str, Any]]]:
         """
         批量發送新聞到 Email
@@ -463,7 +483,7 @@ class DeliveryManager:
     
     async def validate_target_with_test(self, platform: str, target: str) -> Tuple[bool, str]:
         """
-        驗證推送目標並測試連通性
+        驗證推送目標並測試連通性（僅在用戶完成設置時調用）
         
         Returns:
             Tuple[bool, str]: (是否有效, 錯誤訊息)
@@ -472,14 +492,14 @@ class DeliveryManager:
         if not provider:
             return False, f"不支援的平台: {platform}"
         
-        # 如果是 Discord 且有測試方法，使用增強驗證
-        if platform.lower() == 'discord' and hasattr(provider, 'validate_target_with_test'):
+        # 如果提供者有增強驗證方法，使用增強驗證
+        if hasattr(provider, 'validate_target_with_test'):
             return await provider.validate_target_with_test(target)
         
         # 否則使用基本格式驗證
         is_valid = provider.validate_target(target)
         if is_valid:
-            return True, ""
+            return True, "格式驗證通過"
         else:
             if platform.lower() == 'discord':
                 return False, "Discord Webhook URL 格式不正確，應以 https://discord.com/api/webhooks/ 開頭"
