@@ -1,9 +1,42 @@
 import time
 import requests
+import logging
+import sys
 from typing import List, Dict, Any, Tuple
 from datetime import datetime, timezone, timedelta
 import openai
 from core.config import settings
+
+# --- Logger Setup ---
+def setup_logger(name: str, log_file: str = None, level=logging.INFO):
+    """設定一個可複用的 logger"""
+    logger = logging.getLogger(name)
+    if logger.hasHandlers():
+        return logger # 如果已經設定過，直接返回
+
+    logger.setLevel(level)
+    
+    # 設定格式
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+    
+    # 設定控制台 handler
+    stream_handler = logging.StreamHandler(sys.stdout)
+    stream_handler.setFormatter(formatter)
+    logger.addHandler(stream_handler)
+    
+    # (可選) 設定檔案 handler
+    if log_file:
+        file_handler = logging.FileHandler(log_file, encoding='utf-8')
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
+        
+    return logger
+
+# --- End of Logger Setup ---
+
 
 # 台灣時區常數
 TAIWAN_TIMEZONE = timezone(timedelta(hours=8))
@@ -11,9 +44,12 @@ TAIWAN_TIMEZONE = timezone(timedelta(hours=8))
 # Initialize OpenAI
 openai.api_key = settings.OPENAI_API_KEY
 
+# 建立一個 logger 實例供 utils.py 內部使用
+logger = setup_logger(__name__)
+
 def generate_summary_optimized(content: str) -> str:
     """使用 OpenAI API 生成金融新聞摘要 (優化版)"""
-    print("🧠 正在生成摘要 (使用 gpt-3.5-turbo)...")
+    logger.info("🧠 正在生成摘要 (使用 gpt-3.5-turbo)...")
     if not openai.api_key:
         return "[摘要生成失敗：API Key 未設定]"
 
@@ -47,7 +83,7 @@ def generate_summary_optimized(content: str) -> str:
         )
         return response.choices[0].message.content.strip()
     except Exception as e:
-        print(f"❌ 摘要失敗: {e}")
+        logger.error(f"❌ 摘要失敗: {e}")
         return "[摘要生成失敗]"
 
 def send_to_discord(webhook: str, articles: List[Dict[str, Any]], subscription: Dict[str, Any] = None) -> bool:

@@ -19,4 +19,13 @@ SCRAPER_TIMEOUT=40
 MAX_RETRIES=3
 
 # Optional: For development/debugging
-DEBUG=true 
+DEBUG=true
+
+# Optional: Email/SMTP Configuration (for email delivery)
+# Use a real email provider like Gmail, SendGrid, etc.
+# For Gmail, you'll need to enable 2-Step Verification and create an App Password.
+SMTP_SERVER=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASSWORD=your-gmail-app-password
+FROM_EMAIL=your-email@gmail.com 

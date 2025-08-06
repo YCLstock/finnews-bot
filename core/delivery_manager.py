@@ -525,7 +525,7 @@ class DeliveryManager:
             logger.error(f"❌ Unsupported delivery platform: {platform}")
             return False, articles
         
-        logger.info(f"📤 Sending {len(articles)} articles via {provider.get_platform_name()} to: {target[:50]}...")
+        logger.info(f"📤 Sending {len(articles)} articles via {provider.get_platform_name()} to user: {subscription.get('user_id', 'N/A')[:8]}...")
         
         try:
             return await provider.send_articles(target, articles, subscription)
