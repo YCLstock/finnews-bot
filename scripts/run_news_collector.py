@@ -136,11 +136,22 @@ class NewsCollector:
             print("=" * 60)
 
 
-def main():
+def main(args=None):
+    use_v2_scraper = False
+    if args and "--scraper=v2" in args:
+        use_v2_scraper = True
+        print("[INFO] 啟用 ScraperV2 模式")
+
+    # 根據參數初始化 scraper_manager
+    # 注意：這裡直接修改了全局的 scraper_manager 實例
+    global scraper_manager
+    scraper_manager = NewsScraperManager(use_v2_scraper=use_v2_scraper)
+
     collector = NewsCollector(top_n_topics=3)
     collector.run_collection()
     return 0
 
 if __name__ == "__main__":
-    exit_code = main()
+    # 從 sys.argv 獲取參數，並傳遞給 main 函式
+    exit_code = main(sys.argv[1:])
     sys.exit(exit_code)

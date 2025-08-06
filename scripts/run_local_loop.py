@@ -15,10 +15,11 @@ from core.utils import setup_logger
 # 設定主循環的 logger
 logger = setup_logger('local_loop', 'local_loop.log')
 
-def job_collector():
+def job_collector(args=None):
     logger.info("====== [JOB START] 執行新聞收集任務 ======")
     try:
-        run_collector()
+        # 將參數傳遞給 run_collector
+        run_collector(args)
         logger.info("====== [JOB END] 新聞收集任務完成 ======")
     except Exception as e:
         logger.error(f"新聞收集任務執行失敗: {e}", exc_info=True)
@@ -32,13 +33,16 @@ def job_pusher():
         logger.error(f"智能推送任務執行失敗: {e}", exc_info=True)
 
 if __name__ == "__main__":
+    # 從命令列讀取參數
+    args = sys.argv[1:]
+
     logger.info("############################################################")
-    logger.info("### FinNews-Bot 本地端主循環程式已啟動 ###")
+    logger.info(f"### FinNews-Bot 本地端主循環程式已啟動 (參數: {args}) ###")
     logger.info("############################################################")
 
     # --- 設定排程 ---
     # 爬蟲任務：每小時的 0 分時執行
-    schedule.every().hour.at(":00").do(job_collector)
+    schedule.every().hour.at(":00").do(job_collector, args=args)
 
     # 推送任務：每天的 08:00, 13:00, 20:00 執行
     schedule.every().day.at("08:00").do(job_pusher)
@@ -51,7 +55,7 @@ if __name__ == "__main__":
 
     # 立即執行一次，以便快速看到效果
     logger.info("程式啟動，立即執行一次新聞收集和推送...")
-    job_collector()
+    job_collector(args=args)
     job_pusher()
 
     logger.info("首次任務執行完畢，進入定時循環模式。請保持此視窗開啟。")

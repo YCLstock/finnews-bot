@@ -13,6 +13,8 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 
+from scraper.scraper_v2 import ScraperV2 # Import ScraperV2
+
 from core.config import settings
 from core.database import db_manager
 from core.utils import parse_article_publish_time
@@ -20,8 +22,11 @@ from core.utils import parse_article_publish_time
 class NewsScraperManager:
     """News scraper manager for FinNews-Bot"""
     
-    def __init__(self):
+    def __init__(self, use_v2_scraper: bool = False):
         self.debug_folder = self._create_debug_folder()
+        self.use_v2_scraper = use_v2_scraper
+        if self.use_v2_scraper:
+            self.scraper_v2 = ScraperV2() # Initialize ScraperV2
     
     def _create_debug_folder(self) -> Path:
         path = Path("debug_pages")
@@ -145,54 +150,63 @@ class NewsScraperManager:
             return None
 
     def scrape_article_content(self, url: str) -> Union[str, None]:
-        print(f"[SELENIUM] 正在啟動瀏覽器抓取: {url[:70]}...")
-        
-        chrome_options = Options()
-        chrome_options.add_argument("--headless=new")
-        chrome_options.add_argument("--no-sandbox")
-        chrome_options.add_argument("--disable-dev-shm-usage")
-        chrome_options.add_argument("--disable-gpu")
-        chrome_options.add_argument("--window-size=1024,768")
-        chrome_options.add_argument("user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36")
+        if self.use_v2_scraper:
+            print(f"[SCRAPER_V2] 使用 ScraperV2 抓取: {url[:70]}...")
+            result = self.scraper_v2._scrape_single_article(url)
+            if result['success']:
+                return result['content']
+            else:
+                print(f"[SCRAPER_V2][ERROR] ScraperV2 抓取失敗: {result['error']}")
+                return None
+        else:
+            print(f"[SELENIUM] 正在啟動瀏覽器抓取: {url[:70]}...")
+            
+            chrome_options = Options()
+            chrome_options.add_argument("--headless=new")
+            chrome_options.add_argument("--no-sandbox")
+            chrome_options.add_argument("--disable-dev-shm-usage")
+            chrome_options.add_argument("--disable-gpu")
+            chrome_options.add_argument("--window-size=1024,768")
+            chrome_options.add_argument("user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36")
 
-        driver = None
-        try:
-            driver = webdriver.Chrome(options=chrome_options)
-            driver.set_page_load_timeout(settings.SCRAPER_TIMEOUT)
-            driver.get(url)
-
+            driver = None
             try:
-                consent_button_locator = (By.CSS_SELECTOR, "button.consent-button[value='agree'], button[name='agree']")
-                consent_button = WebDriverWait(driver, 10).until(
-                    EC.element_to_be_clickable(consent_button_locator)
+                driver = webdriver.Chrome(options=chrome_options)
+                driver.set_page_load_timeout(settings.SCRAPER_TIMEOUT)
+                driver.get(url)
+
+                try:
+                    consent_button_locator = (By.CSS_SELECTOR, "button.consent-button[value='agree'], button[name='agree']")
+                    consent_button = WebDriverWait(driver, 10).until(
+                        EC.element_to_be_clickable(consent_button_locator)
+                    )
+                    driver.execute_script("arguments[0].click();", consent_button)
+                    time.sleep(random.uniform(1, 2))
+                except TimeoutException:
+                    pass # No consent button
+
+                content_container_locator = (By.CSS_SELECTOR, '[data-testid="article-content-wrapper"], div.caas-body')
+                WebDriverWait(driver, 20).until(
+                    EC.presence_of_element_located(content_container_locator)
                 )
-                driver.execute_script("arguments[0].click();", consent_button)
-                time.sleep(random.uniform(1, 2))
-            except TimeoutException:
-                pass # No consent button
+                
+                soup = BeautifulSoup(driver.page_source, "html.parser")
+                body = soup.select_one('[data-testid="article-content-wrapper"], div.caas-body')
 
-            content_container_locator = (By.CSS_SELECTOR, '[data-testid="article-content-wrapper"], div.caas-body')
-            WebDriverWait(driver, 20).until(
-                EC.presence_of_element_located(content_container_locator)
-            )
-            
-            soup = BeautifulSoup(driver.page_source, "html.parser")
-            body = soup.select_one('[data-testid="article-content-wrapper"], div.caas-body')
+                if body:
+                    content_text = "\n".join(p.get_text(strip=True) for p in body.find_all("p") if p.get_text(strip=True))
+                    if content_text:
+                        print(f"[SUCCESS] 成功擷取文章內文，約 {len(content_text)} 字。")
+                        return content_text
+                
+                return None
 
-            if body:
-                content_text = "\n".join(p.get_text(strip=True) for p in body.find_all("p") if p.get_text(strip=True))
-                if content_text:
-                    print(f"[SUCCESS] 成功擷取文章內文，約 {len(content_text)} 字。")
-                    return content_text
-            
-            return None
-
-        except Exception as e:
-            print(f"[ERROR] 擷取內文時發生錯誤: {e}")
-            return None
-        finally:
-            if driver:
-                driver.quit()
+            except Exception as e:
+                print(f"[ERROR] 擷取內文時發生錯誤: {e}")
+                return None
+            finally:
+                if driver:
+                    driver.quit()
     
     def generate_summary_and_tags(self, title: str, content: str) -> tuple:
         """同時生成摘要和AI標籤"""

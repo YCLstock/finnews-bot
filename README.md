@@ -126,6 +126,14 @@ SCRAPER_TIMEOUT=30
 SCRAPER_USER_AGENT=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
 API_HOST=0.0.0.0
 API_PORT=8000
+
+# Email/SMTP 配置 (可選，用於 Email 推送)
+# 詳情請參考 .env.example
+# SMTP_SERVER=smtp.gmail.com
+# SMTP_PORT=587
+# SMTP_USER=your-email@gmail.com
+# SMTP_PASSWORD=your-gmail-app-password
+# FROM_EMAIL=your-email@gmail.com
 ```
 
 ### 2. **資料庫結構** (Supabase)
@@ -458,7 +466,14 @@ pip install -r requirements.txt
 cp .env.example .env
 # 編輯 .env 填入您的設定
 
-# 本地測試Lambda函數
+# 啟動本地主循環 (包含爬蟲和推送排程)
+# 預設使用 Selenium 爬蟲
+start_local.bat
+
+# 使用高效能的 requests + BeautifulSoup 爬蟲 (ScraperV2)
+start_local.bat --scraper=v2
+
+# 本地測試Lambda函數 (如果適用)
 python test_lambda_simple.py
 
 # 啟動API服務 (如需要)
