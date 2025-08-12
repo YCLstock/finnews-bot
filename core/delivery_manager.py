@@ -142,25 +142,68 @@ class DiscordProvider(DeliveryProvider):
         
         for i, article in enumerate(articles):
             try:
-                # 創建單則新聞的 Discord embed
-                payload = {
-                    "embeds": [{
-                        "title": f"📰 {article['title']}",
-                        "description": article['summary'],
-                        "color": 3447003,  # Discord 藍色
-                        "fields": [
-                            {
-                                "name": "🔗 原文連結",
-                                "value": f"[點此閱讀完整內容]({article['original_url']})",
-                                "inline": False
-                            }
-                        ],
-                        "footer": {
-                            "text": f"第 {i+1}/{len(articles)} 則 • {frequency_type.upper()} 推送 • {time.strftime('%Y-%m-%d %H:%M:%S')}"
-                        },
-                        "timestamp": time.strftime('%Y-%m-%dT%H:%M:%S.000Z')
-                    }]
+                # 判斷是否為重點新聞（第一則）
+                is_featured = i == 0
+                
+                # Claude 品牌色彩 (轉換為 Discord 數值)
+                claude_primary_color = 11958829  # RGB(182, 123, 45) 轉換
+                claude_secondary_color = 15849265  # 較淺橘色
+                default_color = 5793266  # 中性色
+                
+                embed_color = claude_primary_color if is_featured else (claude_secondary_color if i == 1 else default_color)
+                
+                # 構建 embed 標題
+                title_prefix = ""
+                if is_featured:
+                    title_prefix = "⭐ "
+                elif i == 1:
+                    title_prefix = "📈 "
+                else:
+                    title_prefix = "📰 "
+                
+                # 創建現代化的 Discord embed (Claude 風格)
+                embed = {
+                    "title": f"{title_prefix}{article['title'][:200]}",  # 限制標題長度
+                    "description": f"**關鍵要點**\n{article['summary'][:1000]}",  # 限制描述長度
+                    "color": embed_color,
+                    "fields": [],
+                    "footer": {
+                        "text": f"FinNews-Bot • {frequency_type.upper()} 推送 • {i+1}/{len(articles)}",
+                        "icon_url": "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f4ca.png"  # 📊 emoji
+                    },
+                    "timestamp": time.strftime('%Y-%m-%dT%H:%M:%S.000Z')
                 }
+                
+                # 添加特色標籤字段
+                if is_featured:
+                    embed["fields"].append({
+                        "name": "🎯 重點新聞",
+                        "value": "此為本次推送的重點關注新聞",
+                        "inline": True
+                    })
+                elif i == 1:
+                    embed["fields"].append({
+                        "name": "📊 重要資訊", 
+                        "value": "值得您關注的市場動態",
+                        "inline": True
+                    })
+                
+                # 添加原文連結字段
+                embed["fields"].append({
+                    "name": "🔗 閱讀原文",
+                    "value": f"[點此查看完整報導]({article['original_url']})",
+                    "inline": True if not is_featured else False
+                })
+                
+                # 添加推送時間字段 (僅第一則顯示)
+                if is_featured:
+                    embed["fields"].append({
+                        "name": "🕒 推送時間",
+                        "value": f"<t:{int(time.time())}:R>",  # Discord 相對時間格式
+                        "inline": True
+                    })
+                
+                payload = {"embeds": [embed]}
                 
                 # 發送請求
                 response = requests.post(webhook, json=payload, timeout=15)
@@ -215,31 +258,44 @@ class DiscordProvider(DeliveryProvider):
         return overall_success, failed_articles
     
     async def _send_summary_message(self, webhook: str, success_count: int, frequency_type: str) -> bool:
-        """發送推送總結消息到 Discord"""
+        """發送 Claude 風格的推送總結消息到 Discord"""
         try:
+            # Claude 品牌色彩
+            claude_primary_color = 11958829  # Claude 橘色
+            
+            # 頻率標籤文案
+            frequency_labels = {
+                "daily": "每日精選",
+                "twice": "每日兩次", 
+                "thrice": "每日三次"
+            }
+            freq_label = frequency_labels.get(frequency_type, frequency_type)
+            
             summary_payload = {
                 "embeds": [{
-                    "title": "📋 新聞推送完成",
-                    "description": f"本次 **{frequency_type.upper()}** 推送已完成",
-                    "color": 5763719,  # 綠色
+                    "title": "✨ 推送完成",
+                    "description": f"**{freq_label}** 新聞推送已送達\n感謝您使用 FinNews-Bot 智能財經新聞服務",
+                    "color": claude_primary_color,
                     "fields": [
                         {
-                            "name": "✅ 成功推送",
-                            "value": f"{success_count} 則新聞",
+                            "name": "📊 本次推送",
+                            "value": f"```\n✅ {success_count} 則新聞\n🎯 AI 智能篩選\n📱 個人化推送\n```",
+                            "inline": False
+                        },
+                        {
+                            "name": "🤖 推送類型", 
+                            "value": f"**{freq_label}**\n基於您的關鍵字偏好",
                             "inline": True
                         },
                         {
-                            "name": "📅 推送類型", 
-                            "value": {
-                                "daily": "每日一次",
-                                "twice": "每日兩次", 
-                                "thrice": "每日三次"
-                            }.get(frequency_type, frequency_type),
+                            "name": "⏰ 下次推送",
+                            "value": "依您的訂閱設定\n自動為您推送",
                             "inline": True
                         }
                     ],
                     "footer": {
-                        "text": f"下次推送時間請參考您的訂閱設定 • FinNews-Bot"
+                        "text": "FinNews-Bot • AI 驅動的財經新聞推送",
+                        "icon_url": "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f4ca.png"
                     },
                     "timestamp": time.strftime('%Y-%m-%dT%H:%M:%S.000Z')
                 }]
@@ -362,37 +418,61 @@ class EmailProvider(DeliveryProvider):
             return f"FinNews-Bot {freq_label}財經新聞 - {article_count}則更新"
     
     def _generate_email_html(self, articles: List[Dict[str, Any]], frequency_type: str, language: str) -> str:
-        """生成 HTML 格式的郵件內容"""
+        """生成簡潔友善的 HTML 郵件內容"""
         lang_is_en = language.startswith('en')
         
-        # 郵件標題
-        title = "FinNews-Bot Financial News Update" if lang_is_en else "FinNews-Bot 財經新聞推送"
-        greeting = f"Here are your latest financial news updates:" if lang_is_en else f"以下是您的最新財經新聞："
+        # 簡潔的色彩系統
+        primary_color = "#B67B2D"     # Claude 橘色，但更柔和
+        text_color = "#374151"        # 深灰色文字
+        muted_color = "#6B7280"       # 淺灰色
+        bg_color = "#FFFFFF"          # 白色背景
+        border_color = "#E5E7EB"      # 淺邊框
         
-        # 頻率標籤
-        frequency_labels = {
-            'daily': 'Daily Update' if lang_is_en else '每日推送',
-            'twice': 'Bi-daily Update' if lang_is_en else '每日兩次推送', 
-            'thrice': 'Tri-daily Update' if lang_is_en else '每日三次推送'
+        # 多語言文案
+        texts = {
+            'zh': {
+                'greeting': '您好！以下是為您精選的財經新聞',
+                'read_more': '閱讀完整文章',
+                'freq_daily': '每日推送',
+                'freq_twice': '每日兩次推送', 
+                'freq_thrice': '每日三次推送',
+                'footer': '這是來自 FinNews-Bot 的個人化財經新聞推送'
+            },
+            'en': {
+                'greeting': 'Hello! Here are your curated financial news',
+                'read_more': 'Read Full Article',
+                'freq_daily': 'Daily Digest',
+                'freq_twice': 'Bi-daily Update',
+                'freq_thrice': 'Tri-daily Update',
+                'footer': 'This is your personalized financial news from FinNews-Bot'
+            }
         }
-        freq_label = frequency_labels.get(frequency_type, frequency_type)
         
-        # 生成文章 HTML
+        t = texts['en'] if lang_is_en else texts['zh']
+        freq_label = {
+            'daily': t['freq_daily'],
+            'twice': t['freq_twice'], 
+            'thrice': t['freq_thrice']
+        }.get(frequency_type, frequency_type)
+        
+        # 生成文章內容
         articles_html = ""
-        for i, article in enumerate(articles, 1):
+        for i, article in enumerate(articles):
             articles_html += f"""
-            <div style="margin-bottom: 24px; padding: 16px; border-left: 4px solid #3B82F6; background-color: #F8FAFC;">
-                <h3 style="margin: 0 0 8px 0; color: #1E293B;">
-                    <a href="{article['original_url']}" style="color: #1E293B; text-decoration: none;">
-                        {i}. {article['title']}
+            <div style="margin-bottom: 32px; padding: 20px; background: {bg_color}; border: 1px solid {border_color}; border-radius: 8px;">
+                <h2 style="margin: 0 0 12px 0; font-size: 18px; font-weight: 600; line-height: 1.4; color: {text_color};">
+                    <a href="{article['original_url']}" style="color: {text_color}; text-decoration: none;">
+                        {article['title']}
                     </a>
-                </h3>
-                <p style="margin: 0 0 12px 0; color: #475569; line-height: 1.5;">
+                </h2>
+                
+                <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.6; color: {text_color};">
                     {article['summary']}
                 </p>
+                
                 <a href="{article['original_url']}" 
-                   style="display: inline-block; padding: 8px 16px; background-color: #3B82F6; color: white; text-decoration: none; border-radius: 4px; font-size: 14px;">
-                    {'Read Full Article' if lang_is_en else '閱讀完整文章'} →
+                   style="display: inline-block; padding: 10px 16px; background: {primary_color}; color: white; text-decoration: none; border-radius: 6px; font-size: 14px; font-weight: 500;">
+                    {t['read_more']} →
                 </a>
             </div>
             """
@@ -400,37 +480,52 @@ class EmailProvider(DeliveryProvider):
         # 完整 HTML 模板
         html_content = f"""
         <!DOCTYPE html>
-        <html>
+        <html lang="{'en' if lang_is_en else 'zh-TW'}">
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>{title}</title>
+            <title>FinNews-Bot</title>
+            <style type="text/css">
+                @media screen and (max-width: 600px) {{
+                    .container {{ padding: 16px !important; }}
+                    .article {{ padding: 16px !important; }}
+                }}
+            </style>
         </head>
-        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <body style="margin: 0; padding: 20px; background: #F9FAFB; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
             
-            <!-- Header -->
-            <div style="text-align: center; margin-bottom: 32px; padding: 24px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; color: white;">
-                <h1 style="margin: 0 0 8px 0; font-size: 24px;">📰 {title}</h1>
-                <p style="margin: 0; opacity: 0.9; font-size: 16px;">{freq_label}</p>
-            </div>
-            
-            <!-- Greeting -->
-            <p style="margin-bottom: 24px; font-size: 16px; color: #475569;">
-                {greeting}
-            </p>
-            
-            <!-- Articles -->
-            {articles_html}
-            
-            <!-- Footer -->
-            <div style="margin-top: 40px; padding-top: 24px; border-top: 2px solid #E2E8F0; text-align: center; color: #64748B; font-size: 14px;">
-                <p style="margin: 0 0 8px 0;">
-                    {'This email was sent by FinNews-Bot' if lang_is_en else '此郵件由 FinNews-Bot 發送'}
-                </p>
-                <p style="margin: 0; font-size: 12px;">
-                    {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} • 
-                    {'Personalized financial news delivery' if lang_is_en else '個人化財經新聞推送服務'}
-                </p>
+            <div class="container" style="max-width: 600px; margin: 0 auto; background: {bg_color}; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                
+                <!-- 頭部 -->
+                <div style="padding: 24px; text-align: center; background: {bg_color}; border-bottom: 1px solid {border_color};">
+                    <h1 style="margin: 0 0 8px 0; font-size: 20px; font-weight: 600; color: {text_color};">
+                        📊 FinNews-Bot
+                    </h1>
+                    <p style="margin: 0; font-size: 14px; color: {muted_color};">
+                        {freq_label} • {datetime.now().strftime('%Y年%m月%d日' if not lang_is_en else '%B %d, %Y')}
+                    </p>
+                </div>
+                
+                <!-- 問候語 -->
+                <div style="padding: 20px 24px;">
+                    <p style="margin: 0; font-size: 16px; color: {text_color};">
+                        {t['greeting']}
+                    </p>
+                </div>
+                
+                <!-- 文章列表 -->
+                <div style="padding: 0 24px 24px 24px;">
+                    {articles_html}
+                </div>
+                
+                <!-- 底部 -->
+                <div style="padding: 20px 24px; background: #F9FAFB; border-top: 1px solid {border_color}; text-align: center;">
+                    <p style="margin: 0; font-size: 13px; color: {muted_color}; line-height: 1.5;">
+                        {t['footer']}<br>
+                        © 2024 FinNews-Bot
+                    </p>
+                </div>
+                
             </div>
             
         </body>
