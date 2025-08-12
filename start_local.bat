@@ -16,7 +16,7 @@ echo [INFO] 正在啟動 FinNews-Bot 主循環程式...
 echo [INFO] 這個視窗將會持續顯示日誌。請不要關閉此視窗。
 
 REM 執行主循環腳本
-py scripts/run_local_loop.py %*
+py scripts/run_local_loop.py --scraper=v2 %*
 
 echo [INFO] 程式已結束。
 pause

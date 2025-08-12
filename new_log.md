@@ -1,9 +1,16 @@
-[DB] 準備將 4 篇文章進行批次儲存...
-INFO:httpx:HTTP Request: POST https://gbobozzqoqfhqmttwzwn.supabase.co/rest/v1/news_articles?columns=%22topics%22%2C%22title%22%2C%22original_url%22%2C%22source%22%2C%22published_at%22%2C%22summary%22%2C%22tags%22 "HTTP/2 201 Created"
-[OK] 批量儲存成功: 4 篇文章
-
-[SUCCESS] 新聞收集任務成功完成。
-  - 總共處理: 94 篇文章
-  - 新增文章: 4 篇
-  - 重複文章: 89 篇
-  - 處理失敗: 1 篇
+PS D:\AI\finnews-bot> python scripts/run_email_test.py
+INFO:core.delivery_manager:Delivery manager initialized with platforms: ['discord', 'email']
+INFO:__main__:🚀 Starting Email Delivery Test...
+INFO:__main__:📬 Test recipient: limyuha27@gmail.com
+INFO:__main__:📄 Created mock subscription data.
+INFO:__main__:📰 Created 2 mock articles for the test email.
+INFO:__main__:🚚 Fetched the delivery manager.
+INFO:__main__:✉️ Attempting to send the test email via delivery manager...        
+INFO:__main__:   (This will use the SMTP settings from your environment variables)
+INFO:core.delivery_manager:📤 Sending 2 articles via Email to user: test-use...   
+INFO:core.delivery_manager:📧 Sending 2 articles to email: limyuha27@gmail.com    
+ERROR:core.delivery_manager:SMTP send error: send_message() got an unexpected keyword argument 'to_addresses'
+ERROR:core.delivery_manager:❌ Failed to send email to limyuha27@gmail.com: send_message() got an unexpected keyword argument 'to_addresses'
+ERROR:__main__:❌ The delivery manager reported a failure in the sending process.
+ERROR:__main__:   Details: 2 articles failed to send.
+INFO:__main__:🏁 Email Delivery Test Finished.

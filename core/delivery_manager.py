@@ -455,7 +455,7 @@ class EmailProvider(DeliveryProvider):
         with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
             server.starttls()
             server.login(self.smtp_user, self.smtp_password)
-            server.send_message(msg, to_addresses=[to_email])
+            server.send_message(msg)
 
 
 class DeliveryManager:
