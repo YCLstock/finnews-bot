@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime, timezone, timedelta
 import uuid
 import logging
@@ -212,6 +212,20 @@ class DatabaseManager:
         except Exception as e:
             print(f"[ERROR] 儲存新文章時錯誤: {e}")
             return None
+
+    def save_new_articles_batch(self, articles_data: List[Dict[str, Any]]) -> Tuple[bool, int]:
+        """批量將新處理的文章儲存到 Supabase"""
+        if not articles_data:
+            return True, 0
+        
+        try:
+            result = self.supabase.table("news_articles").insert(articles_data).execute()
+            count = len(result.data)
+            print(f"[OK] 批量儲存成功: {count} 篇文章")
+            return True, count
+        except Exception as e:
+            print(f"[ERROR] 批量儲存新文章時錯誤: {e}")
+            return False, 0
     
     def log_push_history(self, user_id: str, article_ids: List[int], batch_id: str = None) -> bool:
         """記錄推送歷史到 Supabase（支援批量推送）"""

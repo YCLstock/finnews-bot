@@ -13,10 +13,11 @@ from collections import Counter
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from scraper.scraper import scraper_manager
+from scraper.scraper import scraper_manager, NewsScraperManager
 from core.database import db_manager
 from core.topics_mapper import topics_mapper
-from core.utils import get_current_taiwan_time, format_taiwan_datetime
+from core.utils import get_current_taiwan_time, format_taiwan_datetime, setup_logger
+logger = setup_logger('news_collector', 'news_collector.log')
 
 class NewsCollector:
     """

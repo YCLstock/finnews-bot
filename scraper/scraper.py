@@ -41,6 +41,7 @@ class NewsScraperManager:
             'duplicates': 0,
             'failed': 0
         }
+        articles_to_save = []
 
         for target in targets:
             topic_code = target['topic_code']
@@ -69,16 +70,21 @@ class NewsScraperManager:
                 article_data = self._process_single_article(news_item, topic_code)
                 
                 if article_data:
-                    article_id = db_manager.save_new_article(article_data)
-                    if article_id:
-                        stats['newly_added'] += 1
-                        processed_for_topic += 1
-                        print(f"[SUCCESS] 新文章已儲存，ID: {article_id}")
-                    else:
-                        stats['failed'] += 1
-                        print(f"[ERROR] 儲存文章到資料庫失敗。")
+                    articles_to_save.append(article_data)
+                    processed_for_topic += 1
                 else:
                     stats['failed'] += 1
+
+        if articles_to_save:
+            print(f"\n[DB] 準備將 {len(articles_to_save)} 篇文章進行批次儲存...")
+            success, count = db_manager.save_new_articles_batch(articles_to_save)
+            if success:
+                stats['newly_added'] = count
+                # 如果批次儲存失敗，計入 failed
+                if count < len(articles_to_save):
+                    stats['failed'] += (len(articles_to_save) - count)
+            else:
+                stats['failed'] += len(articles_to_save)
 
         return True, stats
 
