@@ -241,8 +241,8 @@ class NewsScraperManager:
   "confidence": 0.9
 }}
 '''
-        headers = {{'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'}}
-        data = {{'model': 'gpt-3.5-turbo', 'messages': [{{'role': 'user', 'content': prompt}}], 'max_tokens': 300, 'temperature': 0.2}}
+        headers = {'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'}
+        data = {'model': 'gpt-3.5-turbo', 'messages': [{'role': 'user', 'content': prompt}], 'max_tokens': 300, 'temperature': 0.2}
         
         import json
         try:
