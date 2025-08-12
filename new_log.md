@@ -1,16 +1,16 @@
-PS D:\AI\finnews-bot> python scripts/run_email_test.py
+Active code page: 65001
+==================================================
+     FinNews-Bot 本地端啟動器
+==================================================
+[INFO] 正在啟動 FinNews-Bot 主循環程式...
+[INFO] 這個視窗將會持續顯示日誌。請不要關閉此視窗。
+D:\ai-new\finnews-bot\scraper\scraper_v2.py:62: SyntaxWarning: 'tuple' object is not callable; perhaps you missed a comma?
+  ('div', {'data-testid': 'article-content-wrapper'})
+Loaded mapping config: 12 topics
 INFO:core.delivery_manager:Delivery manager initialized with platforms: ['discord', 'email']
-INFO:__main__:🚀 Starting Email Delivery Test...
-INFO:__main__:📬 Test recipient: limyuha27@gmail.com
-INFO:__main__:📄 Created mock subscription data.
-INFO:__main__:📰 Created 2 mock articles for the test email.
-INFO:__main__:🚚 Fetched the delivery manager.
-INFO:__main__:✉️ Attempting to send the test email via delivery manager...        
-INFO:__main__:   (This will use the SMTP settings from your environment variables)
-INFO:core.delivery_manager:📤 Sending 2 articles via Email to user: test-use...   
-INFO:core.delivery_manager:📧 Sending 2 articles to email: limyuha27@gmail.com    
-ERROR:core.delivery_manager:SMTP send error: send_message() got an unexpected keyword argument 'to_addresses'
-ERROR:core.delivery_manager:❌ Failed to send email to limyuha27@gmail.com: send_message() got an unexpected keyword argument 'to_addresses'
-ERROR:__main__:❌ The delivery manager reported a failure in the sending process.
-ERROR:__main__:   Details: 2 articles failed to send.
-INFO:__main__:🏁 Email Delivery Test Finished.
+Traceback (most recent call last):
+  File "D:\ai-new\finnews-bot\scripts\run_local_loop.py", line 13, in <module>
+    from core.utils import setup_logger
+ImportError: cannot import name 'setup_logger' from 'core.utils' (D:\ai-new\finnews-bot\core\utils.py)
+[INFO] 程式已結束。
+Press any key to continue . . .
