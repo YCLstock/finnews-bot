@@ -1,9 +1,12 @@
-
 import time
 import requests
+import logging
 from bs4 import BeautifulSoup
 import concurrent.futures
 from typing import List, Dict, Union
+from core.logger_config import setup_logging
+
+logger = logging.getLogger(__name__)
 
 class ScraperV2:
     """
@@ -47,7 +50,7 @@ class ScraperV2:
 
                 if response.status_code == 429:  # Too Many Requests
                     wait_time = (attempt + 1) * 5
-                    print(f"[SCRAPER_V2][WARN] Rate limited for {url}. Waiting {wait_time} seconds...")
+                    logger.warning(f"Rate limited for {url}. Waiting {wait_time} seconds...")
                     time.sleep(wait_time)
                     continue
 
@@ -56,9 +59,9 @@ class ScraperV2:
 
                 # Try multiple selectors to find the article content
                 selectors = [
-                    ('div', {'data-testid': 'article-content-wrapper'}),
-                    ('article', {'class': 'article-wrap no-bb'}),
-                    ('div', {'class': 'caas-body'}),
+                    ('div', {'data-testid': 'article-content-wrapper'})
+                    ('article', {'class': 'article-wrap no-bb'})
+                    ('div', {'class': 'caas-body'})
                 ]
 
                 content_wrapper = None
@@ -84,7 +87,7 @@ class ScraperV2:
                         }
 
             except requests.exceptions.RequestException as e:
-                print(f"[SCRAPER_V2][ERROR] Request failed for {url} on attempt {attempt + 1}: {e}")
+                logger.error(f"Request failed for {url} on attempt {attempt + 1}: {e}")
                 if attempt == self.max_retries - 1:
                     return {'url': url, 'success': False, 'error': str(e)}
                 time.sleep(2 ** attempt)  # Exponential backoff
@@ -101,7 +104,7 @@ class ScraperV2:
         Returns:
             A list of dictionaries, each containing the result for a single URL.
         """
-        print(f"[SCRAPER_V2][INFO] Starting to scrape {len(urls)} articles with {self.max_workers} workers...")
+        logger.info(f"Starting to scrape {len(urls)} articles with {self.max_workers} workers...")
         results = []
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             future_to_url = {executor.submit(self._scrape_single_article, url): url for url in urls}
@@ -110,15 +113,16 @@ class ScraperV2:
                 result = future.result()
                 results.append(result)
                 if result['success']:
-                    print(f"[SCRAPTER_V2][SUCCESS] Finished scraping: {result['url'][:70]}...")
+                    logger.info(f"Successfully scraped: {result['url'][:70]}...")
                 else:
-                    print(f"[SCRAPTER_V2][FAILURE] Failed to scrape: {result['url'][:70]}... Error: {result['error']}")
+                    logger.error(f"Failed to scrape: {result['url'][:70]}... Error: {result['error']}")
 
         return results
 
 # Example Usage:
 if __name__ == '__main__':
-    print("--- [SCRAPER_V2] Example Usage ---")
+    setup_logging()
+    logger.info("--- [SCRAPER_V2] Example Usage ---")
     
     # Create an instance of the new scraper
     scraper_v2 = ScraperV2(max_workers=3, max_retries=2, delay=0.5)
@@ -133,15 +137,15 @@ if __name__ == '__main__':
     # Run the scraping process
     scraped_results = scraper_v2.scrape_articles(example_urls)
     
-    print("\n--- [SCRAPER_V2] Results ---")
+    logger.info("--- [SCRAPER_V2] Results ---")
     for res in scraped_results:
         if res['success']:
-            print(f"URL: {res['url']}\nContent Length: {len(res['content'])}\n")
+            logger.info(f"URL: {res['url']}\nContent Length: {len(res['content'])}")
             # Save the first successful scrape to a file
             if "https://finance.yahoo.com/news/live/stock-market-today-dow-sp-500-nasdaq-close-higher-as-nvidia-pops-google-slides-210836970.html" in res['url']:
                 with open("scraped_content_example.txt", "w", encoding="utf-8") as f:
                     f.write(f"URL: {res['url']}\n\n")
                     f.write(res['content'])
-                print(f"--- [INFO] Content of the first article has been saved to scraped_content_example.txt ---")
+                logger.info("--- Content of the first article has been saved to scraped_content_example.txt ---")
         else:
-            print(f"URL: {res['url']}\nError: {res['error']}\n")
+            logger.error(f"URL: {res['url']}\nError: {res['error']}")
