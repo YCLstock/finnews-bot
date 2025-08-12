@@ -99,8 +99,17 @@ class NewsCollector:
         # 2. 根據熱門主題，構建爬取 URL 列表
         target_urls = []
         for topic_code, score in hot_topics:
-            # 將主題代碼轉換為小寫以構建 URL
-            url = f"{self.YAHOO_TOPIC_URL_BASE}{topic_code.lower()}"
+            # 從 topics_mapper 獲取該主題的詳細設定
+            topic_config = topics_mapper.topics_mapping.get(topic_code)
+            
+            if not topic_config:
+                logger.warning(f"在 topics_mapping 中找不到主題 '{topic_code}' 的設定，跳過此主題。")
+                continue
+
+            # 使用 url_slug (如果存在)，否則退回到使用 topic_code
+            url_slug = topic_config.get("url_slug", topic_code).lower()
+            url = f"{self.YAHOO_TOPIC_URL_BASE}{url_slug}"
+            
             target_urls.append({"topic_code": topic_code, "url": url})
 
         logger.info(f"\n本次爬取目標 ({len(target_urls)} 個):")
