@@ -46,6 +46,7 @@ class NewsScraperManager:
             'failed': 0
         }
         articles_to_save = []
+        processed_urls_in_run = set() # 新增: 用於追蹤本次運行中已處理的URL
 
         for target in targets:
             topic_code = target['topic_code']
@@ -59,6 +60,11 @@ class NewsScraperManager:
 
             processed_for_topic = 0
             for news_item in news_list:
+                # 新增檢查: 如果此URL在本輪運行中已處理，則跳過
+                if news_item['link'] in processed_urls_in_run:
+                    logger.info(f"文章在本輪已處理 (SKIP): {news_item['title'][:50]}...")
+                    continue
+
                 if max_articles_to_process is not None and processed_for_topic >= max_articles_to_process:
                     logger.info(f"已達到主題 {topic_code} 的處理上限 ({max_articles_to_process} 篇文章)，跳過剩餘文章。")
                     break
@@ -66,8 +72,9 @@ class NewsScraperManager:
                 stats['total_processed'] += 1
                 
                 if db_manager.is_article_processed(news_item['link']):
-                    logger.info(f"文章已處理過 (SKIP): {news_item['title'][:50]}...")
+                    logger.info(f"文章已在資料庫中 (SKIP): {news_item['title'][:50]}...")
                     stats['duplicates'] += 1
+                    processed_urls_in_run.add(news_item['link']) # 也將其加入，避免重複處理
                     continue
 
                 logger.info(f"正在處理新文章: {news_item['title'][:50]}...")
@@ -75,6 +82,7 @@ class NewsScraperManager:
                 
                 if article_data:
                     articles_to_save.append(article_data)
+                    processed_urls_in_run.add(news_item['link']) # 新增: 記錄已處理的URL
                     processed_for_topic += 1
                 else:
                     stats['failed'] += 1
