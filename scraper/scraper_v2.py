@@ -58,10 +58,10 @@ class ScraperV2:
                 soup = BeautifulSoup(response.content, 'html.parser')
 
                 # Try multiple selectors to find the article content
-                selectors = [
-                    ('div', {'data-testid': 'article-content-wrapper'})
-                    ('article', {'class': 'article-wrap no-bb'})
-                    ('div', {'class': 'caas-body'})
+                                selectors = [
+                    ('div', {'data-testid': 'article-content-wrapper'}),
+                    ('article', {'class': 'article-wrap no-bb'}),
+                    ('div', {'class': 'caas-body'}),
                 ]
 
                 content_wrapper = None
