@@ -1,6 +1,7 @@
 import time
 import schedule
 import sys
+import logging
 from pathlib import Path
 
 # 添加項目根目錄到 Python 路徑
@@ -10,10 +11,10 @@ sys.path.insert(0, str(project_root))
 # 引入您的主程式
 from scripts.run_news_collector import main as run_collector
 from scripts.run_smart_pusher import main as run_pusher
-from core.utils import setup_logger
+from core.logger_config import setup_logging
 
 # 設定主循環的 logger
-logger = setup_logger('local_loop', 'local_loop.log')
+logger = logging.getLogger(__name__)
 
 def job_collector(args=None):
     logger.info("====== [JOB START] 執行新聞收集任務 ======")
@@ -33,6 +34,9 @@ def job_pusher():
         logger.error(f"智能推送任務執行失敗: {e}", exc_info=True)
 
 if __name__ == "__main__":
+    # 優先設定日誌
+    setup_logging()
+
     # 從命令列讀取參數
     args = sys.argv[1:]
 
