@@ -232,7 +232,20 @@ class NewsScraperManager:
             logger.error("OPENAI_API_KEY not found, cannot generate summary and tags.")
             return f"Summary generation failed. Title: {title}", []
         
-        core_tags = ["APPLE", "TSMC", "TESLA", "AI_TECH", "CRYPTO"]
+        # 使用統一標籤管理系統
+        try:
+            from scripts.dynamic_tags import get_tags_for_scraper
+            core_tags = get_tags_for_scraper()
+        except Exception as e:
+            logger.warning(f"Failed to load dynamic tags, using fallback: {e}")
+            # 降級到硬編碼標籤作為備用
+            core_tags = [
+                "APPLE", "TSMC", "TESLA", "AI_TECH", "CRYPTO",
+                "STOCK_MARKET", "ECONOMIES", "LATEST", "EARNINGS", 
+                "TECH", "ELECTRIC_VEHICLES", "FEDERAL_RESERVE",
+                "HOUSING", "ENERGY", "HEALTHCARE", "FINANCE",
+                "TARIFFS", "TRADE", "COMMODITIES", "BONDS"
+            ]
         
         prompt = f'''
 請為以下財經新聞同時完成兩個任務：

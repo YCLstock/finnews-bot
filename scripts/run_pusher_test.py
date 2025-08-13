@@ -25,15 +25,24 @@ class SmartPusherTest:
     """智能推送器測試版本 - 基於已存儲文章，僅記錄不推送"""
 
     def __init__(self):
-        self.tag_weight = 0.7
-        self.keyword_weight = 0.3
-        self.match_threshold = 0.5
+        self.tag_weight = 0.5
+        self.keyword_weight = 0.5
+        self.match_threshold = 0.2 # 降低門檻以提高匹配率
 
     def _get_user_interest_topics(self, keywords: List[str]) -> List[str]:
         if not keywords:
             return []
-        mapped_results = topics_mapper.map_keywords_to_topics(keywords)
-        interest_topics = list(set([result[0].upper() for result in mapped_results]))
+        
+        # 使用統一標籤管理系統
+        try:
+            from scripts.dynamic_tags import convert_keywords_to_tags
+            interest_topics = convert_keywords_to_tags(keywords)
+        except Exception as e:
+            print(f"[WARNING] Failed to use unified tag system, fallback to topics_mapper: {e}")
+            # 降級到原有的topics_mapper
+            mapped_results = topics_mapper.map_keywords_to_topics(keywords)
+            interest_topics = list(set([result[0].upper() for result in mapped_results]))
+        
         print(f"[INFO] 用戶意圖分析: {keywords} -> {interest_topics}")
         return interest_topics
 

@@ -30,18 +30,25 @@ class SmartPusher:
 
     def __init__(self):
         # 定義混合評分引擎的權重
-        self.tag_weight = 0.7
-        self.keyword_weight = 0.3
-        self.match_threshold = 0.5 # 推送門檻分數
+        self.tag_weight = 0.5
+        self.keyword_weight = 0.5
+        self.match_threshold = 0.2 # 推送門檻分數 (降低以提高匹配率)
 
     def _get_user_interest_topics(self, keywords: List[str]) -> List[str]:
         """將用戶的原始關鍵字列表轉化為標準化的興趣主題列表"""
         if not keywords:
             return []
         
-        mapped_results = topics_mapper.map_keywords_to_topics(keywords)
+        # 使用統一標籤管理系統
+        try:
+            from scripts.dynamic_tags import convert_keywords_to_tags
+            interest_topics = convert_keywords_to_tags(keywords)
+        except Exception as e:
+            logger.warning(f"Failed to use unified tag system, fallback to topics_mapper: {e}")
+            # 降級到原有的topics_mapper
+            mapped_results = topics_mapper.map_keywords_to_topics(keywords)
+            interest_topics = list(set([result[0].upper() for result in mapped_results]))
         
-        interest_topics = list(set([result[0].upper() for result in mapped_results]))
         logger.info(f"用戶意圖分析: {keywords} -> {interest_topics}")
         return interest_topics
 
