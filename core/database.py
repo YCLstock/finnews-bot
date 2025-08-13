@@ -38,7 +38,7 @@ class DatabaseManager:
             "thrice": {
                 "times": ["08:00", "13:00", "20:00"],
                 "window_minutes": 30,
-                "max_articles": 3
+                "max_articles": 5
             }
         }
     
