@@ -53,195 +53,327 @@ ON CONFLICT (tag_code) DO UPDATE SET
 -- 第二階段: 關鍵字映射數據遷移
 -- =====================================================
 
--- 插入基礎關鍵字映射
-WITH tag_mappings AS (
-  SELECT id, tag_code FROM public.tags WHERE is_active = true
-)
+-- 插入基礎關鍵字映射 (重構為獨立INSERT語句以避免語法錯誤)
+
+-- 蘋果公司關鍵字映射
 INSERT INTO public.keyword_mappings (tag_id, keyword, language, mapping_type, confidence, match_method, is_active)
 SELECT t.id, kw.keyword, kw.language, 'system_migration', kw.confidence, 'exact', true
-FROM tag_mappings t
-CROSS JOIN (
-    -- 蘋果公司相關
-    SELECT 'apple' as keyword, 'en' as language, 1.0 as confidence WHERE tag_code = 'APPLE'
-    UNION ALL SELECT 'aapl', 'en', 1.0 WHERE tag_code = 'APPLE'
-    UNION ALL SELECT '蘋果', 'zh', 1.0 WHERE tag_code = 'APPLE'
-    UNION ALL SELECT '庫克', 'zh', 0.8 WHERE tag_code = 'APPLE'
-    UNION ALL SELECT 'iphone', 'en', 0.9 WHERE tag_code = 'APPLE'
-    UNION ALL SELECT 'mac', 'en', 0.7 WHERE tag_code = 'APPLE'
-    
-    -- 台積電相關
-    UNION ALL SELECT 'tsmc', 'en', 1.0 WHERE tag_code = 'TSMC'
-    UNION ALL SELECT 'taiwan semiconductor', 'en', 1.0 WHERE tag_code = 'TSMC'
-    UNION ALL SELECT '台積電', 'zh', 1.0 WHERE tag_code = 'TSMC'
-    UNION ALL SELECT '晶圓', 'zh', 0.8 WHERE tag_code = 'TSMC'
-    
-    -- 特斯拉相關
-    UNION ALL SELECT 'tesla', 'en', 1.0 WHERE tag_code = 'TESLA'
-    UNION ALL SELECT 'tsla', 'en', 1.0 WHERE tag_code = 'TESLA'
-    UNION ALL SELECT '特斯拉', 'zh', 1.0 WHERE tag_code = 'TESLA'
-    UNION ALL SELECT '馬斯克', 'zh', 0.9 WHERE tag_code = 'TESLA'
-    UNION ALL SELECT 'elon musk', 'en', 0.9 WHERE tag_code = 'TESLA'
-    
-    -- AI科技相關
-    UNION ALL SELECT 'ai', 'en', 1.0 WHERE tag_code = 'AI_TECH'
-    UNION ALL SELECT 'artificial intelligence', 'en', 1.0 WHERE tag_code = 'AI_TECH'
-    UNION ALL SELECT '人工智慧', 'zh', 1.0 WHERE tag_code = 'AI_TECH'
-    UNION ALL SELECT 'machine learning', 'en', 0.9 WHERE tag_code = 'AI_TECH'
-    UNION ALL SELECT '機器學習', 'zh', 0.9 WHERE tag_code = 'AI_TECH'
-    UNION ALL SELECT 'chatgpt', 'en', 0.8 WHERE tag_code = 'AI_TECH'
-    UNION ALL SELECT 'openai', 'en', 0.8 WHERE tag_code = 'AI_TECH'
-    
-    -- 科技產業相關
-    UNION ALL SELECT 'technology', 'en', 1.0 WHERE tag_code = 'TECH'
-    UNION ALL SELECT 'tech', 'en', 1.0 WHERE tag_code = 'TECH'
-    UNION ALL SELECT '科技', 'zh', 1.0 WHERE tag_code = 'TECH'
-    UNION ALL SELECT '科技股', 'zh', 1.0 WHERE tag_code = 'TECH'
-    UNION ALL SELECT 'semiconductor', 'en', 0.8 WHERE tag_code = 'TECH'
-    UNION ALL SELECT '半導體', 'zh', 0.8 WHERE tag_code = 'TECH'
-    
-    -- 電動車相關
-    UNION ALL SELECT 'electric vehicle', 'en', 1.0 WHERE tag_code = 'ELECTRIC_VEHICLES'
-    UNION ALL SELECT 'ev', 'en', 1.0 WHERE tag_code = 'ELECTRIC_VEHICLES'
-    UNION ALL SELECT '電動車', 'zh', 1.0 WHERE tag_code = 'ELECTRIC_VEHICLES'
-    UNION ALL SELECT '新能源車', 'zh', 1.0 WHERE tag_code = 'ELECTRIC_VEHICLES'
-    UNION ALL SELECT '充電', 'zh', 0.7 WHERE tag_code = 'ELECTRIC_VEHICLES'
-    
-    -- 股票市場相關
-    UNION ALL SELECT 'stock', 'en', 1.0 WHERE tag_code = 'STOCK_MARKET'
-    UNION ALL SELECT 'market', 'en', 0.8 WHERE tag_code = 'STOCK_MARKET'
-    UNION ALL SELECT 'dow', 'en', 0.9 WHERE tag_code = 'STOCK_MARKET'
-    UNION ALL SELECT 'nasdaq', 'en', 0.9 WHERE tag_code = 'STOCK_MARKET'
-    UNION ALL SELECT 's&p', 'en', 0.9 WHERE tag_code = 'STOCK_MARKET'
-    UNION ALL SELECT '股市', 'zh', 1.0 WHERE tag_code = 'STOCK_MARKET'
-    UNION ALL SELECT '股票', 'zh', 1.0 WHERE tag_code = 'STOCK_MARKET'
-    UNION ALL SELECT '道瓊', 'zh', 0.9 WHERE tag_code = 'STOCK_MARKET'
-    UNION ALL SELECT '納斯達克', 'zh', 0.9 WHERE tag_code = 'STOCK_MARKET'
-    
-    -- 經濟指標相關
-    UNION ALL SELECT 'economy', 'en', 1.0 WHERE tag_code = 'ECONOMIES'
-    UNION ALL SELECT 'gdp', 'en', 1.0 WHERE tag_code = 'ECONOMIES'
-    UNION ALL SELECT 'recession', 'en', 0.9 WHERE tag_code = 'ECONOMIES'
-    UNION ALL SELECT 'unemployment', 'en', 0.8 WHERE tag_code = 'ECONOMIES'
-    UNION ALL SELECT '經濟', 'zh', 1.0 WHERE tag_code = 'ECONOMIES'
-    UNION ALL SELECT '失業率', 'zh', 0.8 WHERE tag_code = 'ECONOMIES'
-    UNION ALL SELECT '衰退', 'zh', 0.9 WHERE tag_code = 'ECONOMIES'
-    UNION ALL SELECT '成長', 'zh', 0.7 WHERE tag_code = 'ECONOMIES'
-    
-    -- 聯準會相關
-    UNION ALL SELECT 'federal reserve', 'en', 1.0 WHERE tag_code = 'FEDERAL_RESERVE'
-    UNION ALL SELECT 'fed', 'en', 1.0 WHERE tag_code = 'FEDERAL_RESERVE'
-    UNION ALL SELECT 'interest rate', 'en', 0.9 WHERE tag_code = 'FEDERAL_RESERVE'
-    UNION ALL SELECT '聯準會', 'zh', 1.0 WHERE tag_code = 'FEDERAL_RESERVE'
-    UNION ALL SELECT '央行', 'zh', 1.0 WHERE tag_code = 'FEDERAL_RESERVE'
-    UNION ALL SELECT '美聯儲', 'zh', 1.0 WHERE tag_code = 'FEDERAL_RESERVE'
-    UNION ALL SELECT '利率', 'zh', 0.9 WHERE tag_code = 'FEDERAL_RESERVE'
-    
-    -- 企業財報相關
-    UNION ALL SELECT 'earnings', 'en', 1.0 WHERE tag_code = 'EARNINGS'
-    UNION ALL SELECT 'revenue', 'en', 0.9 WHERE tag_code = 'EARNINGS'
-    UNION ALL SELECT 'profit', 'en', 0.9 WHERE tag_code = 'EARNINGS'
-    UNION ALL SELECT 'quarterly', 'en', 0.8 WHERE tag_code = 'EARNINGS'
-    UNION ALL SELECT '財報', 'zh', 1.0 WHERE tag_code = 'EARNINGS'
-    UNION ALL SELECT '營收', 'zh', 0.9 WHERE tag_code = 'EARNINGS'
-    UNION ALL SELECT '獲利', 'zh', 0.9 WHERE tag_code = 'EARNINGS'
-    UNION ALL SELECT '季報', 'zh', 0.8 WHERE tag_code = 'EARNINGS'
-    
-    -- 加密貨幣相關
-    UNION ALL SELECT 'bitcoin', 'en', 1.0 WHERE tag_code = 'CRYPTO'
-    UNION ALL SELECT 'crypto', 'en', 1.0 WHERE tag_code = 'CRYPTO'
-    UNION ALL SELECT 'cryptocurrency', 'en', 1.0 WHERE tag_code = 'CRYPTO'
-    UNION ALL SELECT 'blockchain', 'en', 0.9 WHERE tag_code = 'CRYPTO'
-    UNION ALL SELECT '比特幣', 'zh', 1.0 WHERE tag_code = 'CRYPTO'
-    UNION ALL SELECT '加密貨幣', 'zh', 1.0 WHERE tag_code = 'CRYPTO'
-    UNION ALL SELECT '區塊鏈', 'zh', 0.9 WHERE tag_code = 'CRYPTO'
-    
-    -- 其他產業關鍵字
-    UNION ALL SELECT 'housing', 'en', 1.0 WHERE tag_code = 'HOUSING'
-    UNION ALL SELECT 'real estate', 'en', 1.0 WHERE tag_code = 'HOUSING'
-    UNION ALL SELECT 'mortgage', 'en', 0.8 WHERE tag_code = 'HOUSING'
-    UNION ALL SELECT '房地產', 'zh', 1.0 WHERE tag_code = 'HOUSING'
-    UNION ALL SELECT '房價', 'zh', 0.9 WHERE tag_code = 'HOUSING'
-    UNION ALL SELECT '房貸', 'zh', 0.8 WHERE tag_code = 'HOUSING'
-    
-    UNION ALL SELECT 'energy', 'en', 1.0 WHERE tag_code = 'ENERGY'
-    UNION ALL SELECT 'oil', 'en', 0.9 WHERE tag_code = 'ENERGY'
-    UNION ALL SELECT 'gas', 'en', 0.8 WHERE tag_code = 'ENERGY'
-    UNION ALL SELECT 'renewable', 'en', 0.8 WHERE tag_code = 'ENERGY'
-    UNION ALL SELECT '能源', 'zh', 1.0 WHERE tag_code = 'ENERGY'
-    UNION ALL SELECT '石油', 'zh', 0.9 WHERE tag_code = 'ENERGY'
-    UNION ALL SELECT '天然氣', 'zh', 0.8 WHERE tag_code = 'ENERGY'
-    UNION ALL SELECT '再生能源', 'zh', 0.8 WHERE tag_code = 'ENERGY'
-    
-    UNION ALL SELECT 'healthcare', 'en', 1.0 WHERE tag_code = 'HEALTHCARE'
-    UNION ALL SELECT 'pharma', 'en', 0.9 WHERE tag_code = 'HEALTHCARE'
-    UNION ALL SELECT 'medical', 'en', 0.8 WHERE tag_code = 'HEALTHCARE'
-    UNION ALL SELECT '醫療', 'zh', 1.0 WHERE tag_code = 'HEALTHCARE'
-    UNION ALL SELECT '製藥', 'zh', 0.9 WHERE tag_code = 'HEALTHCARE'
-    UNION ALL SELECT '生技', 'zh', 0.8 WHERE tag_code = 'HEALTHCARE'
-    
-    UNION ALL SELECT 'finance', 'en', 1.0 WHERE tag_code = 'FINANCE'
-    UNION ALL SELECT 'banking', 'en', 0.9 WHERE tag_code = 'FINANCE'
-    UNION ALL SELECT '金融', 'zh', 1.0 WHERE tag_code = 'FINANCE'
-    UNION ALL SELECT '銀行', 'zh', 0.9 WHERE tag_code = 'FINANCE'
-    UNION ALL SELECT '保險', 'zh', 0.8 WHERE tag_code = 'FINANCE'
-    
-    UNION ALL SELECT 'tariff', 'en', 1.0 WHERE tag_code = 'TARIFFS'
-    UNION ALL SELECT '關稅', 'zh', 1.0 WHERE tag_code = 'TARIFFS'
-    UNION ALL SELECT '貿易戰', 'zh', 0.9 WHERE tag_code = 'TARIFFS'
-    
-    UNION ALL SELECT 'trade', 'en', 1.0 WHERE tag_code = 'TRADE'
-    UNION ALL SELECT 'import', 'en', 0.8 WHERE tag_code = 'TRADE'
-    UNION ALL SELECT 'export', 'en', 0.8 WHERE tag_code = 'TRADE'
-    UNION ALL SELECT '貿易', 'zh', 1.0 WHERE tag_code = 'TRADE'
-    UNION ALL SELECT '進口', 'zh', 0.8 WHERE tag_code = 'TRADE'
-    UNION ALL SELECT '出口', 'zh', 0.8 WHERE tag_code = 'TRADE'
-    
-    UNION ALL SELECT 'bonds', 'en', 1.0 WHERE tag_code = 'BONDS'
-    UNION ALL SELECT 'treasury', 'en', 0.9 WHERE tag_code = 'BONDS'
-    UNION ALL SELECT 'yield', 'en', 0.8 WHERE tag_code = 'BONDS'
-    UNION ALL SELECT '債券', 'zh', 1.0 WHERE tag_code = 'BONDS'
-    UNION ALL SELECT '公債', 'zh', 0.9 WHERE tag_code = 'BONDS'
-    UNION ALL SELECT '殖利率', 'zh', 0.8 WHERE tag_code = 'BONDS'
-    
-    UNION ALL SELECT 'commodities', 'en', 1.0 WHERE tag_code = 'COMMODITIES'
-    UNION ALL SELECT 'gold', 'en', 0.9 WHERE tag_code = 'COMMODITIES'
-    UNION ALL SELECT 'silver', 'en', 0.8 WHERE tag_code = 'COMMODITIES'
-    UNION ALL SELECT '商品', 'zh', 1.0 WHERE tag_code = 'COMMODITIES'
-    UNION ALL SELECT '黃金', 'zh', 0.9 WHERE tag_code = 'COMMODITIES'
-    UNION ALL SELECT '白銀', 'zh', 0.8 WHERE tag_code = 'COMMODITIES'
-    
-    -- 通用關鍵字
-    UNION ALL SELECT 'latest', 'en', 0.8 WHERE tag_code = 'LATEST'
-    UNION ALL SELECT 'news', 'en', 0.7 WHERE tag_code = 'LATEST'
-    UNION ALL SELECT '最新', 'zh', 0.8 WHERE tag_code = 'LATEST'
-    UNION ALL SELECT '消息', 'zh', 0.7 WHERE tag_code = 'LATEST'
-    UNION ALL SELECT '新聞', 'zh', 0.6 WHERE tag_code = 'LATEST'
-) kw ON t.tag_code = (
-    CASE 
-        WHEN kw.keyword IN ('apple', 'aapl', '蘋果', '庫克', 'iphone', 'mac') THEN 'APPLE'
-        WHEN kw.keyword IN ('tsmc', 'taiwan semiconductor', '台積電', '晶圓') THEN 'TSMC'
-        WHEN kw.keyword IN ('tesla', 'tsla', '特斯拉', '馬斯克', 'elon musk') THEN 'TESLA'
-        WHEN kw.keyword IN ('ai', 'artificial intelligence', '人工智慧', 'machine learning', '機器學習', 'chatgpt', 'openai') THEN 'AI_TECH'
-        WHEN kw.keyword IN ('technology', 'tech', '科技', '科技股', 'semiconductor', '半導體') THEN 'TECH'
-        WHEN kw.keyword IN ('electric vehicle', 'ev', '電動車', '新能源車', '充電') THEN 'ELECTRIC_VEHICLES'
-        WHEN kw.keyword IN ('stock', 'market', 'dow', 'nasdaq', 's&p', '股市', '股票', '道瓊', '納斯達克') THEN 'STOCK_MARKET'
-        WHEN kw.keyword IN ('economy', 'gdp', 'recession', 'unemployment', '經濟', '失業率', '衰退', '成長') THEN 'ECONOMIES'
-        WHEN kw.keyword IN ('federal reserve', 'fed', 'interest rate', '聯準會', '央行', '美聯儲', '利率') THEN 'FEDERAL_RESERVE'
-        WHEN kw.keyword IN ('earnings', 'revenue', 'profit', 'quarterly', '財報', '營收', '獲利', '季報') THEN 'EARNINGS'
-        WHEN kw.keyword IN ('bitcoin', 'crypto', 'cryptocurrency', 'blockchain', '比特幣', '加密貨幣', '區塊鏈') THEN 'CRYPTO'
-        WHEN kw.keyword IN ('housing', 'real estate', 'mortgage', '房地產', '房價', '房貸') THEN 'HOUSING'
-        WHEN kw.keyword IN ('energy', 'oil', 'gas', 'renewable', '能源', '石油', '天然氣', '再生能源') THEN 'ENERGY'
-        WHEN kw.keyword IN ('healthcare', 'pharma', 'medical', '醫療', '製藥', '生技') THEN 'HEALTHCARE'
-        WHEN kw.keyword IN ('finance', 'banking', '金融', '銀行', '保險') THEN 'FINANCE'
-        WHEN kw.keyword IN ('tariff', '關稅', '貿易戰') THEN 'TARIFFS'
-        WHEN kw.keyword IN ('trade', 'import', 'export', '貿易', '進口', '出口') THEN 'TRADE'
-        WHEN kw.keyword IN ('bonds', 'treasury', 'yield', '債券', '公債', '殖利率') THEN 'BONDS'
-        WHEN kw.keyword IN ('commodities', 'gold', 'silver', '商品', '黃金', '白銀') THEN 'COMMODITIES'
-        WHEN kw.keyword IN ('latest', 'news', '最新', '消息', '新聞') THEN 'LATEST'
-        ELSE NULL
-    END
-)
-WHERE t.tag_code IS NOT NULL
+FROM (SELECT id FROM public.tags WHERE tag_code = 'APPLE' AND is_active = true) t
+CROSS JOIN (VALUES 
+    ('apple', 'en', 1.0),
+    ('aapl', 'en', 1.0),
+    ('蘋果', 'zh', 1.0),
+    ('庫克', 'zh', 0.8),
+    ('iphone', 'en', 0.9),
+    ('mac', 'en', 0.7)
+) AS kw(keyword, language, confidence)
+ON CONFLICT (tag_id, keyword) DO UPDATE SET
+    confidence = EXCLUDED.confidence,
+    updated_at = CURRENT_TIMESTAMP;
+
+-- 台積電關鍵字映射
+INSERT INTO public.keyword_mappings (tag_id, keyword, language, mapping_type, confidence, match_method, is_active)
+SELECT t.id, kw.keyword, kw.language, 'system_migration', kw.confidence, 'exact', true
+FROM (SELECT id FROM public.tags WHERE tag_code = 'TSMC' AND is_active = true) t
+CROSS JOIN (VALUES 
+    ('tsmc', 'en', 1.0),
+    ('taiwan semiconductor', 'en', 1.0),
+    ('台積電', 'zh', 1.0),
+    ('晶圓', 'zh', 0.8)
+) AS kw(keyword, language, confidence)
+ON CONFLICT (tag_id, keyword) DO UPDATE SET
+    confidence = EXCLUDED.confidence,
+    updated_at = CURRENT_TIMESTAMP;
+
+-- 特斯拉關鍵字映射
+INSERT INTO public.keyword_mappings (tag_id, keyword, language, mapping_type, confidence, match_method, is_active)
+SELECT t.id, kw.keyword, kw.language, 'system_migration', kw.confidence, 'exact', true
+FROM (SELECT id FROM public.tags WHERE tag_code = 'TESLA' AND is_active = true) t
+CROSS JOIN (VALUES 
+    ('tesla', 'en', 1.0),
+    ('tsla', 'en', 1.0),
+    ('特斯拉', 'zh', 1.0),
+    ('馬斯克', 'zh', 0.9),
+    ('elon musk', 'en', 0.9)
+) AS kw(keyword, language, confidence)
+ON CONFLICT (tag_id, keyword) DO UPDATE SET
+    confidence = EXCLUDED.confidence,
+    updated_at = CURRENT_TIMESTAMP;
+
+-- AI科技關鍵字映射
+INSERT INTO public.keyword_mappings (tag_id, keyword, language, mapping_type, confidence, match_method, is_active)
+SELECT t.id, kw.keyword, kw.language, 'system_migration', kw.confidence, 'exact', true
+FROM (SELECT id FROM public.tags WHERE tag_code = 'AI_TECH' AND is_active = true) t
+CROSS JOIN (VALUES 
+    ('ai', 'en', 1.0),
+    ('artificial intelligence', 'en', 1.0),
+    ('人工智慧', 'zh', 1.0),
+    ('machine learning', 'en', 0.9),
+    ('機器學習', 'zh', 0.9),
+    ('chatgpt', 'en', 0.8),
+    ('openai', 'en', 0.8)
+) AS kw(keyword, language, confidence)
+ON CONFLICT (tag_id, keyword) DO UPDATE SET
+    confidence = EXCLUDED.confidence,
+    updated_at = CURRENT_TIMESTAMP;
+
+-- 科技產業關鍵字映射
+INSERT INTO public.keyword_mappings (tag_id, keyword, language, mapping_type, confidence, match_method, is_active)
+SELECT t.id, kw.keyword, kw.language, 'system_migration', kw.confidence, 'exact', true
+FROM (SELECT id FROM public.tags WHERE tag_code = 'TECH' AND is_active = true) t
+CROSS JOIN (VALUES 
+    ('technology', 'en', 1.0),
+    ('tech', 'en', 1.0),
+    ('科技', 'zh', 1.0),
+    ('科技股', 'zh', 1.0),
+    ('semiconductor', 'en', 0.8),
+    ('半導體', 'zh', 0.8)
+) AS kw(keyword, language, confidence)
+ON CONFLICT (tag_id, keyword) DO UPDATE SET
+    confidence = EXCLUDED.confidence,
+    updated_at = CURRENT_TIMESTAMP;
+
+-- 電動車關鍵字映射
+INSERT INTO public.keyword_mappings (tag_id, keyword, language, mapping_type, confidence, match_method, is_active)
+SELECT t.id, kw.keyword, kw.language, 'system_migration', kw.confidence, 'exact', true
+FROM (SELECT id FROM public.tags WHERE tag_code = 'ELECTRIC_VEHICLES' AND is_active = true) t
+CROSS JOIN (VALUES 
+    ('electric vehicle', 'en', 1.0),
+    ('ev', 'en', 1.0),
+    ('電動車', 'zh', 1.0),
+    ('新能源車', 'zh', 1.0),
+    ('充電', 'zh', 0.7)
+) AS kw(keyword, language, confidence)
+ON CONFLICT (tag_id, keyword) DO UPDATE SET
+    confidence = EXCLUDED.confidence,
+    updated_at = CURRENT_TIMESTAMP;
+
+-- 股票市場關鍵字映射
+INSERT INTO public.keyword_mappings (tag_id, keyword, language, mapping_type, confidence, match_method, is_active)
+SELECT t.id, kw.keyword, kw.language, 'system_migration', kw.confidence, 'exact', true
+FROM (SELECT id FROM public.tags WHERE tag_code = 'STOCK_MARKET' AND is_active = true) t
+CROSS JOIN (VALUES 
+    ('stock', 'en', 1.0),
+    ('market', 'en', 0.8),
+    ('dow', 'en', 0.9),
+    ('nasdaq', 'en', 0.9),
+    ('s&p', 'en', 0.9),
+    ('股市', 'zh', 1.0),
+    ('股票', 'zh', 1.0),
+    ('道瓊', 'zh', 0.9),
+    ('納斯達克', 'zh', 0.9)
+) AS kw(keyword, language, confidence)
+ON CONFLICT (tag_id, keyword) DO UPDATE SET
+    confidence = EXCLUDED.confidence,
+    updated_at = CURRENT_TIMESTAMP;
+
+-- 經濟指標關鍵字映射
+INSERT INTO public.keyword_mappings (tag_id, keyword, language, mapping_type, confidence, match_method, is_active)
+SELECT t.id, kw.keyword, kw.language, 'system_migration', kw.confidence, 'exact', true
+FROM (SELECT id FROM public.tags WHERE tag_code = 'ECONOMIES' AND is_active = true) t
+CROSS JOIN (VALUES 
+    ('economy', 'en', 1.0),
+    ('gdp', 'en', 1.0),
+    ('recession', 'en', 0.9),
+    ('unemployment', 'en', 0.8),
+    ('經濟', 'zh', 1.0),
+    ('失業率', 'zh', 0.8),
+    ('衰退', 'zh', 0.9),
+    ('成長', 'zh', 0.7)
+) AS kw(keyword, language, confidence)
+ON CONFLICT (tag_id, keyword) DO UPDATE SET
+    confidence = EXCLUDED.confidence,
+    updated_at = CURRENT_TIMESTAMP;
+
+-- 聯準會關鍵字映射
+INSERT INTO public.keyword_mappings (tag_id, keyword, language, mapping_type, confidence, match_method, is_active)
+SELECT t.id, kw.keyword, kw.language, 'system_migration', kw.confidence, 'exact', true
+FROM (SELECT id FROM public.tags WHERE tag_code = 'FEDERAL_RESERVE' AND is_active = true) t
+CROSS JOIN (VALUES 
+    ('federal reserve', 'en', 1.0),
+    ('fed', 'en', 1.0),
+    ('interest rate', 'en', 0.9),
+    ('聯準會', 'zh', 1.0),
+    ('央行', 'zh', 1.0),
+    ('美聯儲', 'zh', 1.0),
+    ('利率', 'zh', 0.9)
+) AS kw(keyword, language, confidence)
+ON CONFLICT (tag_id, keyword) DO UPDATE SET
+    confidence = EXCLUDED.confidence,
+    updated_at = CURRENT_TIMESTAMP;
+
+-- 企業財報關鍵字映射
+INSERT INTO public.keyword_mappings (tag_id, keyword, language, mapping_type, confidence, match_method, is_active)
+SELECT t.id, kw.keyword, kw.language, 'system_migration', kw.confidence, 'exact', true
+FROM (SELECT id FROM public.tags WHERE tag_code = 'EARNINGS' AND is_active = true) t
+CROSS JOIN (VALUES 
+    ('earnings', 'en', 1.0),
+    ('revenue', 'en', 0.9),
+    ('profit', 'en', 0.9),
+    ('quarterly', 'en', 0.8),
+    ('財報', 'zh', 1.0),
+    ('營收', 'zh', 0.9),
+    ('獲利', 'zh', 0.9),
+    ('季報', 'zh', 0.8)
+) AS kw(keyword, language, confidence)
+ON CONFLICT (tag_id, keyword) DO UPDATE SET
+    confidence = EXCLUDED.confidence,
+    updated_at = CURRENT_TIMESTAMP;
+
+-- 加密貨幣關鍵字映射
+INSERT INTO public.keyword_mappings (tag_id, keyword, language, mapping_type, confidence, match_method, is_active)
+SELECT t.id, kw.keyword, kw.language, 'system_migration', kw.confidence, 'exact', true
+FROM (SELECT id FROM public.tags WHERE tag_code = 'CRYPTO' AND is_active = true) t
+CROSS JOIN (VALUES 
+    ('bitcoin', 'en', 1.0),
+    ('crypto', 'en', 1.0),
+    ('cryptocurrency', 'en', 1.0),
+    ('blockchain', 'en', 0.9),
+    ('比特幣', 'zh', 1.0),
+    ('加密貨幣', 'zh', 1.0),
+    ('區塊鏈', 'zh', 0.9)
+) AS kw(keyword, language, confidence)
+ON CONFLICT (tag_id, keyword) DO UPDATE SET
+    confidence = EXCLUDED.confidence,
+    updated_at = CURRENT_TIMESTAMP;
+
+-- 房地產關鍵字映射
+INSERT INTO public.keyword_mappings (tag_id, keyword, language, mapping_type, confidence, match_method, is_active)
+SELECT t.id, kw.keyword, kw.language, 'system_migration', kw.confidence, 'exact', true
+FROM (SELECT id FROM public.tags WHERE tag_code = 'HOUSING' AND is_active = true) t
+CROSS JOIN (VALUES 
+    ('housing', 'en', 1.0),
+    ('real estate', 'en', 1.0),
+    ('mortgage', 'en', 0.8),
+    ('房地產', 'zh', 1.0),
+    ('房價', 'zh', 0.9),
+    ('房貸', 'zh', 0.8)
+) AS kw(keyword, language, confidence)
+ON CONFLICT (tag_id, keyword) DO UPDATE SET
+    confidence = EXCLUDED.confidence,
+    updated_at = CURRENT_TIMESTAMP;
+
+-- 能源產業關鍵字映射
+INSERT INTO public.keyword_mappings (tag_id, keyword, language, mapping_type, confidence, match_method, is_active)
+SELECT t.id, kw.keyword, kw.language, 'system_migration', kw.confidence, 'exact', true
+FROM (SELECT id FROM public.tags WHERE tag_code = 'ENERGY' AND is_active = true) t
+CROSS JOIN (VALUES 
+    ('energy', 'en', 1.0),
+    ('oil', 'en', 0.9),
+    ('gas', 'en', 0.8),
+    ('renewable', 'en', 0.8),
+    ('能源', 'zh', 1.0),
+    ('石油', 'zh', 0.9),
+    ('天然氣', 'zh', 0.8),
+    ('再生能源', 'zh', 0.8)
+) AS kw(keyword, language, confidence)
+ON CONFLICT (tag_id, keyword) DO UPDATE SET
+    confidence = EXCLUDED.confidence,
+    updated_at = CURRENT_TIMESTAMP;
+
+-- 醫療保健關鍵字映射
+INSERT INTO public.keyword_mappings (tag_id, keyword, language, mapping_type, confidence, match_method, is_active)
+SELECT t.id, kw.keyword, kw.language, 'system_migration', kw.confidence, 'exact', true
+FROM (SELECT id FROM public.tags WHERE tag_code = 'HEALTHCARE' AND is_active = true) t
+CROSS JOIN (VALUES 
+    ('healthcare', 'en', 1.0),
+    ('pharma', 'en', 0.9),
+    ('medical', 'en', 0.8),
+    ('醫療', 'zh', 1.0),
+    ('製藥', 'zh', 0.9),
+    ('生技', 'zh', 0.8)
+) AS kw(keyword, language, confidence)
+ON CONFLICT (tag_id, keyword) DO UPDATE SET
+    confidence = EXCLUDED.confidence,
+    updated_at = CURRENT_TIMESTAMP;
+
+-- 金融業關鍵字映射
+INSERT INTO public.keyword_mappings (tag_id, keyword, language, mapping_type, confidence, match_method, is_active)
+SELECT t.id, kw.keyword, kw.language, 'system_migration', kw.confidence, 'exact', true
+FROM (SELECT id FROM public.tags WHERE tag_code = 'FINANCE' AND is_active = true) t
+CROSS JOIN (VALUES 
+    ('finance', 'en', 1.0),
+    ('banking', 'en', 0.9),
+    ('金融', 'zh', 1.0),
+    ('銀行', 'zh', 0.9),
+    ('保險', 'zh', 0.8)
+) AS kw(keyword, language, confidence)
+ON CONFLICT (tag_id, keyword) DO UPDATE SET
+    confidence = EXCLUDED.confidence,
+    updated_at = CURRENT_TIMESTAMP;
+
+-- 關稅貿易關鍵字映射
+INSERT INTO public.keyword_mappings (tag_id, keyword, language, mapping_type, confidence, match_method, is_active)
+SELECT t.id, kw.keyword, kw.language, 'system_migration', kw.confidence, 'exact', true
+FROM (SELECT id FROM public.tags WHERE tag_code = 'TARIFFS' AND is_active = true) t
+CROSS JOIN (VALUES 
+    ('tariff', 'en', 1.0),
+    ('關稅', 'zh', 1.0),
+    ('貿易戰', 'zh', 0.9)
+) AS kw(keyword, language, confidence)
+ON CONFLICT (tag_id, keyword) DO UPDATE SET
+    confidence = EXCLUDED.confidence,
+    updated_at = CURRENT_TIMESTAMP;
+
+-- 國際貿易關鍵字映射
+INSERT INTO public.keyword_mappings (tag_id, keyword, language, mapping_type, confidence, match_method, is_active)
+SELECT t.id, kw.keyword, kw.language, 'system_migration', kw.confidence, 'exact', true
+FROM (SELECT id FROM public.tags WHERE tag_code = 'TRADE' AND is_active = true) t
+CROSS JOIN (VALUES 
+    ('trade', 'en', 1.0),
+    ('import', 'en', 0.8),
+    ('export', 'en', 0.8),
+    ('貿易', 'zh', 1.0),
+    ('進口', 'zh', 0.8),
+    ('出口', 'zh', 0.8)
+) AS kw(keyword, language, confidence)
+ON CONFLICT (tag_id, keyword) DO UPDATE SET
+    confidence = EXCLUDED.confidence,
+    updated_at = CURRENT_TIMESTAMP;
+
+-- 債券市場關鍵字映射
+INSERT INTO public.keyword_mappings (tag_id, keyword, language, mapping_type, confidence, match_method, is_active)
+SELECT t.id, kw.keyword, kw.language, 'system_migration', kw.confidence, 'exact', true
+FROM (SELECT id FROM public.tags WHERE tag_code = 'BONDS' AND is_active = true) t
+CROSS JOIN (VALUES 
+    ('bonds', 'en', 1.0),
+    ('treasury', 'en', 0.9),
+    ('yield', 'en', 0.8),
+    ('債券', 'zh', 1.0),
+    ('公債', 'zh', 0.9),
+    ('殖利率', 'zh', 0.8)
+) AS kw(keyword, language, confidence)
+ON CONFLICT (tag_id, keyword) DO UPDATE SET
+    confidence = EXCLUDED.confidence,
+    updated_at = CURRENT_TIMESTAMP;
+
+-- 商品期貨關鍵字映射
+INSERT INTO public.keyword_mappings (tag_id, keyword, language, mapping_type, confidence, match_method, is_active)
+SELECT t.id, kw.keyword, kw.language, 'system_migration', kw.confidence, 'exact', true
+FROM (SELECT id FROM public.tags WHERE tag_code = 'COMMODITIES' AND is_active = true) t
+CROSS JOIN (VALUES 
+    ('commodities', 'en', 1.0),
+    ('gold', 'en', 0.9),
+    ('silver', 'en', 0.8),
+    ('商品', 'zh', 1.0),
+    ('黃金', 'zh', 0.9),
+    ('白銀', 'zh', 0.8)
+) AS kw(keyword, language, confidence)
+ON CONFLICT (tag_id, keyword) DO UPDATE SET
+    confidence = EXCLUDED.confidence,
+    updated_at = CURRENT_TIMESTAMP;
+
+-- 最新消息關鍵字映射
+INSERT INTO public.keyword_mappings (tag_id, keyword, language, mapping_type, confidence, match_method, is_active)
+SELECT t.id, kw.keyword, kw.language, 'system_migration', kw.confidence, 'exact', true
+FROM (SELECT id FROM public.tags WHERE tag_code = 'LATEST' AND is_active = true) t
+CROSS JOIN (VALUES 
+    ('latest', 'en', 0.8),
+    ('news', 'en', 0.7),
+    ('最新', 'zh', 0.8),
+    ('消息', 'zh', 0.7),
+    ('新聞', 'zh', 0.6)
+) AS kw(keyword, language, confidence)
 ON CONFLICT (tag_id, keyword) DO UPDATE SET
     confidence = EXCLUDED.confidence,
     updated_at = CURRENT_TIMESTAMP;
