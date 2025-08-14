@@ -1,4 +1,8 @@
-# Supabase Configuration
+# ===== 環境配置 =====
+# 重要：生產環境必須設為 "production"
+ENVIRONMENT=development
+
+# ===== Supabase Configuration =====
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_KEY=your-service-key-here
 SUPABASE_ANON_KEY=your-anon-key-here
@@ -6,26 +10,31 @@ SUPABASE_ANON_KEY=your-anon-key-here
 # JWT Secret (從 Supabase Dashboard 獲取)
 SUPABASE_JWT_SECRET=your-JWT
 
-# OpenAI Configuration
+# ===== OpenAI Configuration =====
 OPENAI_API_KEY=sk-your-openai-api-key-here
 
-# API Configuration
+# ===== API Configuration =====
 API_HOST=0.0.0.0
 API_PORT=8000
+
+# 重要：生產環境必須使用強密碼，不可使用預設值
 SECRET_KEY=your-secret-key-for-jwt-signing
 
-# Scraper Configuration
+# ===== Scraper Configuration =====
 SCRAPER_TIMEOUT=40
 MAX_RETRIES=3
 
-# Optional: For development/debugging
-DEBUG=true
-
-# Optional: Email/SMTP Configuration (for email delivery)
-# Use a real email provider like Gmail, SendGrid, etc.
-# For Gmail, you'll need to enable 2-Step Verification and create an App Password.
+# ===== Email/SMTP Configuration (可選) =====
+# 用於 email delivery，如 Gmail, SendGrid 等
+# Gmail 需要啟用 2 步驗證並創建應用密碼
 SMTP_SERVER=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USER=your-email@gmail.com
 SMTP_PASSWORD=your-gmail-app-password
-FROM_EMAIL=your-email@gmail.com 
+FROM_EMAIL=your-email@gmail.com
+
+# ===== 生產環境注意事項 =====
+# 1. ENVIRONMENT 必須設為 "production"
+# 2. SECRET_KEY 必須是隨機生成的強密碼
+# 3. 所有必要的環境變數都必須設定
+# 4. 建議使用環境變數管理服務（如 Vercel Environment Variables） 

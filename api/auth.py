@@ -7,6 +7,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import hashlib
 
 from core.config import settings
+from core.secure_logger import secure_logger, log_auth_success, log_auth_failure, log_debug, is_production
 
 # JWT 驗證器
 security = HTTPBearer()
@@ -30,13 +31,13 @@ class JWTVerifier:
             # 檢查是否是 base64 格式
             if len(secret) % 4 == 0 and secret.replace('+', '').replace('/', '').replace('=', '').isalnum():
                 decoded = base64.b64decode(secret)
-                print("KEY: Using base64 decoded JWT Secret")
+                log_debug("Using base64 decoded JWT Secret")
                 return decoded
         except Exception:
             pass
         
         # 直接使用原始字符串
-        print("KEY: Using raw string JWT Secret")
+        log_debug("Using raw string JWT Secret")
         return secret.encode('utf-8')
         
     def _generate_cache_key(self, token: str) -> str:
@@ -74,7 +75,7 @@ class JWTVerifier:
             if exp and datetime.fromtimestamp(exp) < datetime.now():
                 raise jwt.ExpiredSignatureError("Token has expired")
             
-            print(f"✅ 本地 HMAC 驗證成功 - 用戶: {payload.get('email')}")
+            log_auth_success(payload.get('email'), "local_hmac")
             
             return {
                 "user_id": payload['sub'],
@@ -94,7 +95,7 @@ class JWTVerifier:
                 headers={"WWW-Authenticate": "Bearer"},
             )
         except jwt.InvalidTokenError as e:
-            print(f"❌ JWT 驗證失敗: {str(e)}")
+            log_auth_failure(f"JWT 驗證失敗: {str(e)}")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=f"Invalid token: {str(e)}",
@@ -107,7 +108,7 @@ class JWTVerifier:
                 headers={"WWW-Authenticate": "Bearer"},
             )
         except Exception as e:
-            print(f"❌ 本地 JWT 驗證失敗: {e}")
+            log_auth_failure(f"本地 JWT 驗證失敗: {e}")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Token verification failed",
@@ -123,7 +124,7 @@ class JWTVerifier:
             from supabase import create_client
             supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_ANON_KEY)
             
-            print("🔄 使用 Supabase API 驗證...")
+            log_debug("使用 Supabase API 驗證...")
             user_response = supabase.auth.get_user(token)
             
             if not user_response.user:
@@ -134,7 +135,7 @@ class JWTVerifier:
                 )
             
             user = user_response.user
-            print(f"✅ Supabase API 驗證成功 - 用戶: {user.email}")
+            log_auth_success(user.email, "supabase_api")
             
             return {
                 "user_id": user.id,
@@ -146,7 +147,7 @@ class JWTVerifier:
             }
             
         except Exception as e:
-            print(f"❌ Supabase API 驗證失敗: {e}")
+            log_auth_failure(f"Supabase API 驗證失敗: {e}")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Token verification failed",
@@ -171,7 +172,7 @@ class JWTVerifier:
         if cache_key in self._token_cache:
             cached_data, expiry = self._token_cache[cache_key]
             if datetime.now() < expiry:
-                print("📦 使用緩存的驗證結果")
+                secure_logger.cache_operation("使用緩存的驗證結果")
                 return cached_data
             else:
                 # 清除過期的緩存
@@ -187,7 +188,7 @@ class JWTVerifier:
         except HTTPException as e:
             # 記錄本地驗證失敗的原因
             verification_error = str(e.detail)
-            print(f"⚠️ 本地驗證失敗: {verification_error}")
+            log_auth_failure(f"本地驗證失敗: {verification_error}")
             
             # 如果是 token 過期，直接拋出錯誤，不嘗試 Supabase API
             if "expired" in verification_error.lower():
@@ -199,7 +200,7 @@ class JWTVerifier:
                 
             except HTTPException as supabase_error:
                 # 兩種方法都失敗，拋出最後的錯誤
-                print(f"❌ 所有驗證方法都失敗")
+                log_auth_failure("所有驗證方法都失敗")
                 raise supabase_error
         
         if user_data:
@@ -230,7 +231,7 @@ class JWTVerifier:
         for key in expired_keys:
             del self._token_cache[key]
         
-        print(f"🧹 清理了 {len(expired_keys)} 個過期的緩存項目")
+        secure_logger.cache_operation(f"清理了 {len(expired_keys)} 個過期的緩存項目")
     
     def get_cache_stats(self) -> Dict[str, Any]:
         """獲取緩存統計信息（用於監控）"""

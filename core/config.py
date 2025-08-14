@@ -7,6 +7,9 @@ load_dotenv()
 class Settings:
     """Application settings"""
     
+    # Environment
+    ENVIRONMENT: str = os.environ.get("ENVIRONMENT", "development").lower()
+    
     # Supabase
     SUPABASE_URL: str = os.environ.get("SUPABASE_URL", "")
     SUPABASE_SERVICE_KEY: str = os.environ.get("SUPABASE_SERVICE_KEY", "")
@@ -35,6 +38,16 @@ class Settings:
     SCRAPER_TIMEOUT: int = int(os.environ.get("SCRAPER_TIMEOUT", "40"))
     MAX_RETRIES: int = int(os.environ.get("MAX_RETRIES", "3"))
     
+    @property
+    def is_production(self) -> bool:
+        """檢查是否為生產環境"""
+        return self.ENVIRONMENT == "production"
+    
+    @property
+    def is_development(self) -> bool:
+        """檢查是否為開發環境"""
+        return self.ENVIRONMENT == "development"
+    
     def validate(self):
         """Validate required environment variables"""
         missing = []
@@ -46,6 +59,11 @@ class Settings:
             missing.append("SUPABASE_JWT_SECRET")
         if not self.OPENAI_API_KEY:
             missing.append("OPENAI_API_KEY")
+        
+        # 生產環境額外檢查
+        if self.is_production:
+            if self.SECRET_KEY == "your-secret-key-change-in-production":
+                missing.append("SECRET_KEY (使用預設值，不安全)")
         
         if missing:
             raise ValueError(f"Missing required environment variables: {', '.join(missing)}")
@@ -59,8 +77,28 @@ class Settings:
             email_missing.append("SMTP_PASSWORD")
         
         if email_missing:
-            print(f"WARNING: Email delivery disabled - missing: {', '.join(email_missing)}")
+            if not self.is_production:
+                print(f"WARNING: Email delivery disabled - missing: {', '.join(email_missing)}")
             return False
         return True
+    
+    def get_cors_origins(self) -> list:
+        """根據環境返回適當的 CORS 源"""
+        if self.is_production:
+            # 生產環境：只允許特定域名
+            return [
+                "https://finnews-bot-frontend.vercel.app",
+                "https://lins-projects-06103545.vercel.app",
+            ]
+        else:
+            # 開發環境：允許本地開發
+            return [
+                "http://localhost:3000",
+                "http://localhost:3001",
+                "https://finnews-bot-frontend.vercel.app",
+                "https://finnews-bot-frontend-git-feature-06c8a8-lins-projects-06103545.vercel.app",
+                "https://finnews-bot-frontend-git-main-lins-projects-06103545.vercel.app",
+                "https://lins-projects-06103545.vercel.app",
+            ]
 
 settings = Settings() 
