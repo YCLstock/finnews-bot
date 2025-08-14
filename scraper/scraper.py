@@ -314,24 +314,25 @@ News Title: {title}
 News Content: {content[:1500]}
 
 TASK 1 - Generate Summary:
-- LANGUAGE: Must use Traditional Chinese (繁體中文) as primary language
+- LANGUAGE: MUST use Traditional Chinese (繁體中文) as primary language - aim for 60%+ Chinese characters
 - LENGTH: 80-120 characters
 - CONTENT: Objective, neutral, highlight key financial data and insights
-- PROPER NOUNS: For English company names, person names, or technical terms, you may keep them in English if they are commonly used in Taiwan financial media (e.g., Apple, Tesla, TSMC, GDP, AI, CEO, IPO)
-- AVOID: English grammatical words (the, and, with, but, in, on, at, etc.)
-- STYLE: Natural mix that Taiwanese readers would expect in financial news
+- PROPER NOUNS: Keep English company names/technical terms ONLY when essential (Apple, Tesla, GDP, AI, CEO, IPO)
+- MANDATORY: Convert all common English words to Chinese (billion→億, investors→投資者, valuation→估值, stocks→股票, industry→行業)
+- AVOID: English grammatical words (the, and, with, but, in, on, at, etc.) and common business terms that have Chinese equivalents
+- STYLE: Natural Traditional Chinese that Taiwanese financial readers expect
 
 TASK 2 - Assign Tags:
 Select most relevant tags (max 3) from: {core_tags}
 
 OUTPUT FORMAT (strictly follow JSON):
 {{
-  "summary": "主要使用繁體中文，可適當保留專業英文術語如Apple、GDP等",
+  "summary": "主要使用繁體中文，僅保留必要的專業術語如Apple、GDP等，其他詞彙如investors→投資者",
   "tags": ["TAG1", "TAG2"],
   "confidence": 0.9
 }}
 
-CRITICAL: The summary should be primarily Traditional Chinese with appropriate English technical terms/company names where natural for Taiwan financial readers. Avoid English grammatical words completely.'''
+CRITICAL: The summary MUST be primarily Traditional Chinese (60%+ Chinese characters). Convert ALL common English business terms to Chinese equivalents. Only keep English for essential company names and technical terms that are universally used in Taiwan financial media.'''
         
         headers = {'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'}
         # 優化模型參數：提高 temperature 增加創造性，增加 max_tokens
@@ -341,6 +342,8 @@ CRITICAL: The summary should be primarily Traditional Chinese with appropriate E
         import time
         max_retries = 2
         start_time = time.time()
+        last_valid_summary = None  # 保存最後一次生成的摘要
+        last_valid_tags = []
         
         for attempt in range(max_retries + 1):
             try:
@@ -357,6 +360,10 @@ CRITICAL: The summary should be primarily Traditional Chinese with appropriate E
                         
                         if not isinstance(tags, list):
                             tags = []
+                        
+                        # 保存這次生成的摘要（不管是否通過驗證）
+                        last_valid_summary = summary
+                        last_valid_tags = tags
                         
                         # 驗證混合語言摘要品質
                         is_valid_summary, quality_score, chinese_ratio, has_forbidden_words, analysis = self._validate_chinese_summary(summary)
@@ -383,7 +390,7 @@ CRITICAL: The summary should be primarily Traditional Chinese with appropriate E
                         else:
                             # 提供詳細的失敗原因
                             failure_reasons = []
-                            if chinese_ratio < 0.6:
+                            if chinese_ratio < 0.55:
                                 failure_reasons.append(f"中文比例過低({chinese_ratio:.1%})")
                             if has_forbidden_words:
                                 forbidden_list = ', '.join(analysis.get('forbidden_words', []))
@@ -396,7 +403,7 @@ CRITICAL: The summary should be primarily Traditional Chinese with appropriate E
                                 logger.info(f"🔄 將重新嘗試生成改進版摘要...")
                                 # 根據具體問題加強提示
                                 retry_hints = []
-                                if chinese_ratio < 0.6:
+                                if chinese_ratio < 0.55:
                                     retry_hints.append("Use MORE Traditional Chinese characters")
                                 if has_forbidden_words:
                                     forbidden_list = ', '.join(analysis.get('forbidden_words', []))
@@ -406,10 +413,15 @@ CRITICAL: The summary should be primarily Traditional Chinese with appropriate E
                                 data['messages'][0]['content'] = retry_prompt
                                 continue
                             else:
-                                logger.error(f"❌ 多次重試後仍無法生成合格摘要: {reason_text}")
+                                logger.warning(f"⚠️  多次重試後摘要仍不完全合格: {reason_text}")
+                                logger.info(f"🔧 將使用最後一次生成的摘要: {last_valid_summary[:50] if last_valid_summary else 'None'}...")
                                 
-                                # 記錄最終失敗（已在上面記錄過）
-                                return f"摘要品質驗證失敗: {reason_text}。原標題：{title}", tags
+                                # 如果有最後生成的摘要，使用它而不是錯誤訊息
+                                if last_valid_summary:
+                                    return last_valid_summary, last_valid_tags
+                                else:
+                                    # 只有在完全沒有生成任何摘要時才返回錯誤訊息
+                                    return f"摘要品質驗證失敗: {reason_text}。原標題：{title}", tags
                                 
                     except json.JSONDecodeError as e:
                         logger.error(f"JSON 解析失敗 (第 {attempt + 1} 次)。原始回應: {result[:200]}...")

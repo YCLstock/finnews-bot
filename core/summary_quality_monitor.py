@@ -407,9 +407,9 @@ def validate_mixed_language_summary(text: str) -> tuple[bool, float, bool, dict]
         'chinese_ratio': chinese_ratio
     }
     
-    # 有效條件：中文字符比例 >= 60% 且不包含禁用英文詞彙
-    # 調降標準：考慮到台灣財經新聞常使用英文公司名和技術術語
-    is_valid = chinese_ratio >= 0.6 and not has_forbidden_words
+    # 有效條件：中文字符比例 >= 55% 且不包含禁用英文詞彙
+    # 再次調降標準：考慮到台灣財經新聞常使用英文公司名和技術術語
+    is_valid = chinese_ratio >= 0.55 and not has_forbidden_words
     
     return is_valid, chinese_ratio, has_forbidden_words, analysis
 
