@@ -152,56 +152,24 @@ class DiscordProvider(DeliveryProvider):
                 
                 embed_color = claude_primary_color if is_featured else (claude_secondary_color if i == 1 else default_color)
                 
-                # 構建 embed 標題
-                title_prefix = ""
-                if is_featured:
-                    title_prefix = "⭐ "
-                elif i == 1:
-                    title_prefix = "📈 "
-                else:
-                    title_prefix = "📰 "
-                
-                # 創建現代化的 Discord embed (Claude 風格)
+                # 創建簡潔的 Discord embed
                 embed = {
-                    "title": f"{title_prefix}{article['title'][:200]}",  # 限制標題長度
-                    "description": f"**關鍵要點**\n{article['summary'][:1000]}",  # 限制描述長度
+                    "title": f"{article['title'][:200]}",  # 限制標題長度
+                    "description": f"{article['summary'][:1000]}",  # 限制描述長度
                     "color": embed_color,
                     "fields": [],
                     "footer": {
-                        "text": f"FinNews-Bot • {frequency_type.upper()} 推送 • {i+1}/{len(articles)}",
-                        "icon_url": "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f4ca.png"  # 📊 emoji
+                        "text": f"FinNews-Bot • {i+1}/{len(articles)}"
                     },
                     "timestamp": time.strftime('%Y-%m-%dT%H:%M:%S.000Z')
                 }
                 
-                # 添加特色標籤字段
-                if is_featured:
-                    embed["fields"].append({
-                        "name": "🎯 重點新聞",
-                        "value": "此為本次推送的重點關注新聞",
-                        "inline": True
-                    })
-                elif i == 1:
-                    embed["fields"].append({
-                        "name": "📊 重要資訊", 
-                        "value": "值得您關注的市場動態",
-                        "inline": True
-                    })
-                
                 # 添加原文連結字段
                 embed["fields"].append({
-                    "name": "🔗 閱讀原文",
+                    "name": "原文連結",
                     "value": f"[點此查看完整報導]({article['original_url']})",
-                    "inline": True if not is_featured else False
+                    "inline": False
                 })
-                
-                # 添加推送時間字段 (僅第一則顯示)
-                if is_featured:
-                    embed["fields"].append({
-                        "name": "🕒 推送時間",
-                        "value": f"<t:{int(time.time())}:R>",  # Discord 相對時間格式
-                        "inline": True
-                    })
                 
                 payload = {"embeds": [embed]}
                 
@@ -273,29 +241,11 @@ class DiscordProvider(DeliveryProvider):
             
             summary_payload = {
                 "embeds": [{
-                    "title": "✨ 推送完成",
-                    "description": f"**{freq_label}** 新聞推送已送達\n感謝您使用 FinNews-Bot 智能財經新聞服務",
+                    "title": "推送完成",
+                    "description": f"本次推送: {success_count}則新聞\n頻率: {freq_label}",
                     "color": claude_primary_color,
-                    "fields": [
-                        {
-                            "name": "📊 本次推送",
-                            "value": f"```\n✅ {success_count} 則新聞\n🎯 AI 智能篩選\n📱 個人化推送\n```",
-                            "inline": False
-                        },
-                        {
-                            "name": "🤖 推送類型", 
-                            "value": f"**{freq_label}**\n基於您的關鍵字偏好",
-                            "inline": True
-                        },
-                        {
-                            "name": "⏰ 下次推送",
-                            "value": "依您的訂閱設定\n自動為您推送",
-                            "inline": True
-                        }
-                    ],
                     "footer": {
-                        "text": "FinNews-Bot • AI 驅動的財經新聞推送",
-                        "icon_url": "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f4ca.png"
+                        "text": "FinNews-Bot"
                     },
                     "timestamp": time.strftime('%Y-%m-%dT%H:%M:%S.000Z')
                 }]
