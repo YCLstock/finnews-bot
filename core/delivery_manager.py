@@ -57,6 +57,31 @@ class DiscordProvider(DeliveryProvider):
     def get_platform_name(self) -> str:
         return "Discord"
     
+    def _get_display_title(self, article: Dict[str, Any], user_language: str) -> str:
+        """
+        根據用戶語言偏好選擇顯示標題
+        
+        Args:
+            article: 文章資料，包含 title 和 translated_title
+            user_language: 用戶語言偏好 (如 'zh-tw', 'en-us' 等)
+            
+        Returns:
+            str: 要顯示的標題
+        """
+        # 檢查是否為中文相關語言
+        chinese_languages = ['zh-tw', 'zh-cn', 'zh']
+        is_chinese_user = any(user_language.lower().startswith(lang) for lang in chinese_languages)
+        
+        if is_chinese_user and article.get('translated_title'):
+            # 中文用戶且有翻譯標題，使用翻譯標題
+            return article['translated_title']
+        elif is_chinese_user and not article.get('translated_title'):
+            # 中文用戶但沒有翻譯標題，使用原標題加上標識
+            return f"[FI] {article['title']}"
+        else:
+            # 英文用戶或其他語言，使用原始標題
+            return article['title']
+    
     def validate_target(self, target: str) -> bool:
         """驗證 Discord Webhook URL 格式"""
         return target.startswith("https://discord.com/api/webhooks/")
@@ -137,13 +162,20 @@ class DiscordProvider(DeliveryProvider):
         successful_articles = []
         failed_articles = []
         
-        # 獲取用戶推送頻率類型
+        # 獲取用戶推送頻率類型和語言偏好
         frequency_type = subscription.get('push_frequency_type', 'daily') if subscription else 'daily'
+        user_language = subscription.get('summary_language', 'zh-tw') if subscription else 'zh-tw'
+        
+        logger.info(f"🌍 用戶語言偏好: {user_language}")
         
         for i, article in enumerate(articles):
             try:
                 # 判斷是否為重點新聞（第一則）
                 is_featured = i == 0
+                
+                # 🌍 根據用戶語言偏好選擇標題
+                display_title = self._get_display_title(article, user_language)
+                logger.info(f"🌍 第{i+1}則標題選擇: '{display_title[:50]}...'")
                 
                 # Claude 品牌色彩 (轉換為 Discord 數值)
                 claude_primary_color = 11958829  # RGB(182, 123, 45) 轉換
@@ -154,7 +186,7 @@ class DiscordProvider(DeliveryProvider):
                 
                 # 創建簡潔的 Discord embed
                 embed = {
-                    "title": f"{article['title'][:200]}",  # 限制標題長度
+                    "title": f"{display_title[:200]}",  # 🌍 使用智能選擇的標題，限制長度
                     "description": f"{article['summary'][:1000]}",  # 限制描述長度
                     "color": embed_color,
                     "fields": [],

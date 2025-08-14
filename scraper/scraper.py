@@ -18,6 +18,7 @@ from scraper.scraper_v2 import ScraperV2
 from core.config import settings
 from core.database import db_manager
 from core.utils import parse_article_publish_time
+from core.translation_service import translate_title_to_chinese
 from core.logger_config import setup_logging
 
 # Initialize logger
@@ -143,6 +144,21 @@ class NewsScraperManager:
             if "[摘要生成失敗" in summary:
                 return None
 
+            # 🌍 新增翻譯功能：翻譯標題為中文
+            translated_title = None
+            try:
+                logger.info(f"🌍 開始翻譯標題: {news_item['title'][:50]}...")
+                translated_title = translate_title_to_chinese(news_item['title'])
+                
+                if translated_title:
+                    logger.info(f"✅ 翻譯成功: {translated_title[:50]}...")
+                else:
+                    logger.info("ℹ️ 標題無需翻譯或翻譯失敗，將儲存原標題")
+                    
+            except Exception as e:
+                logger.warning(f"⚠️ 翻譯過程發生錯誤，但不影響文章處理: {e}")
+                translated_title = None
+
             published_at = parse_article_publish_time()
             
             logger.debug(f"Inside _process_single_article - Type of news_item['link']: {type(news_item['link'])}")
@@ -153,6 +169,7 @@ class NewsScraperManager:
                 'source': 'yahoo_finance', 
                 'title': news_item['title'], 
                 'summary': summary,
+                'translated_title': translated_title,  # 🌍 新增翻譯標題欄位
                 'tags': tags,
                 'topics': [topic_code],
                 'published_at': published_at.isoformat()
