@@ -383,7 +383,7 @@ CRITICAL: The summary should be primarily Traditional Chinese with appropriate E
                         else:
                             # 提供詳細的失敗原因
                             failure_reasons = []
-                            if chinese_ratio < 0.7:
+                            if chinese_ratio < 0.6:
                                 failure_reasons.append(f"中文比例過低({chinese_ratio:.1%})")
                             if has_forbidden_words:
                                 forbidden_list = ', '.join(analysis.get('forbidden_words', []))
@@ -396,7 +396,7 @@ CRITICAL: The summary should be primarily Traditional Chinese with appropriate E
                                 logger.info(f"🔄 將重新嘗試生成改進版摘要...")
                                 # 根據具體問題加強提示
                                 retry_hints = []
-                                if chinese_ratio < 0.7:
+                                if chinese_ratio < 0.6:
                                     retry_hints.append("Use MORE Traditional Chinese characters")
                                 if has_forbidden_words:
                                     forbidden_list = ', '.join(analysis.get('forbidden_words', []))

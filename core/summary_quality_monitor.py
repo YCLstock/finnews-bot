@@ -365,14 +365,15 @@ def validate_mixed_language_summary(text: str) -> tuple[bool, float, bool, dict]
     
     text = text.strip()
     
-    # 計算中文字符比例
+    # 計算中文字符比例（改進版：僅計算字母+中文，排除數字和符號）
     chinese_chars = re.findall(r'[\u4e00-\u9fff]', text)
-    total_meaningful_chars = re.findall(r'[\w\u4e00-\u9fff]', text)
+    # 只計算文字字符：中文字符 + 英文字母
+    text_chars_only = re.findall(r'[a-zA-Z\u4e00-\u9fff]', text)
     
-    if len(total_meaningful_chars) == 0:
-        return False, 0.0, False, {'error': 'No meaningful characters'}
+    if len(text_chars_only) == 0:
+        return False, 0.0, False, {'error': 'No text characters'}
     
-    chinese_ratio = len(chinese_chars) / len(total_meaningful_chars)
+    chinese_ratio = len(chinese_chars) / len(text_chars_only)
     
     # 提取所有英文詞彙
     english_words = re.findall(r'\b[a-zA-Z]+\b', text)
@@ -398,7 +399,7 @@ def validate_mixed_language_summary(text: str) -> tuple[bool, float, bool, dict]
     # 計算詳細分析
     analysis = {
         'chinese_chars': len(chinese_chars),
-        'total_meaningful_chars': len(total_meaningful_chars),
+        'text_chars_only': len(text_chars_only),  # 更新為新的計算方式
         'english_words_count': len(english_words),
         'forbidden_words': forbidden_words,
         'allowed_words': allowed_words,
@@ -406,8 +407,9 @@ def validate_mixed_language_summary(text: str) -> tuple[bool, float, bool, dict]
         'chinese_ratio': chinese_ratio
     }
     
-    # 有效條件：中文字符比例 >= 70% 且不包含禁用英文詞彙
-    is_valid = chinese_ratio >= 0.7 and not has_forbidden_words
+    # 有效條件：中文字符比例 >= 60% 且不包含禁用英文詞彙
+    # 調降標準：考慮到台灣財經新聞常使用英文公司名和技術術語
+    is_valid = chinese_ratio >= 0.6 and not has_forbidden_words
     
     return is_valid, chinese_ratio, has_forbidden_words, analysis
 
